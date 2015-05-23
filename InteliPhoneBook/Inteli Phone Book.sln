@@ -3,16 +3,50 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InteliPhoneBookService", "InteliPhoneBookService\InteliPhoneBookService.csproj", "{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InteliPhoneBook.Utility", "InteliPhoneBook.Utility\InteliPhoneBook.Utility.csproj", "{F56C6D54-4466-41F8-9ADF-61D4F71624D8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InteliPhoneBook.Model", "InteliPhoneBook.Model\InteliPhoneBook.Model.csproj", "{7DC0524D-8F91-4861-8102-D3870B0E1787}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|Mixed Platforms = Debug|Mixed Platforms
 		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|Mixed Platforms = Release|Mixed Platforms
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
+		{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}.Debug|Mixed Platforms.Build.0 = Debug|x86
 		{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}.Debug|x86.ActiveCfg = Debug|x86
 		{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}.Debug|x86.Build.0 = Debug|x86
+		{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}.Release|Any CPU.ActiveCfg = Release|x86
+		{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}.Release|Mixed Platforms.ActiveCfg = Release|x86
+		{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}.Release|Mixed Platforms.Build.0 = Release|x86
 		{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}.Release|x86.ActiveCfg = Release|x86
 		{EDB123A8-7B3D-4E0B-BDFA-4B3D514879DD}.Release|x86.Build.0 = Release|x86
+		{F56C6D54-4466-41F8-9ADF-61D4F71624D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F56C6D54-4466-41F8-9ADF-61D4F71624D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F56C6D54-4466-41F8-9ADF-61D4F71624D8}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{F56C6D54-4466-41F8-9ADF-61D4F71624D8}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{F56C6D54-4466-41F8-9ADF-61D4F71624D8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F56C6D54-4466-41F8-9ADF-61D4F71624D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F56C6D54-4466-41F8-9ADF-61D4F71624D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F56C6D54-4466-41F8-9ADF-61D4F71624D8}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{F56C6D54-4466-41F8-9ADF-61D4F71624D8}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{F56C6D54-4466-41F8-9ADF-61D4F71624D8}.Release|x86.ActiveCfg = Release|Any CPU
+		{7DC0524D-8F91-4861-8102-D3870B0E1787}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7DC0524D-8F91-4861-8102-D3870B0E1787}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7DC0524D-8F91-4861-8102-D3870B0E1787}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{7DC0524D-8F91-4861-8102-D3870B0E1787}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{7DC0524D-8F91-4861-8102-D3870B0E1787}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7DC0524D-8F91-4861-8102-D3870B0E1787}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7DC0524D-8F91-4861-8102-D3870B0E1787}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7DC0524D-8F91-4861-8102-D3870B0E1787}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{7DC0524D-8F91-4861-8102-D3870B0E1787}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{7DC0524D-8F91-4861-8102-D3870B0E1787}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
