@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace InteliPhoneBookService
 {
@@ -11,6 +12,13 @@ namespace InteliPhoneBookService
 
         static public void DoWork(Object stateInfo)
         {
+            while (true)
+            {
+                if (InteliPhoneBookService.ServiceIsTerminating == 1)
+                { Interlocked.Increment(ref InteliPhoneBookService.FSOBThreadTerminated); break; }
+                Thread.Sleep(10);
+            }
+            log.Info("exited");
         }
     }
 }
