@@ -55,6 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FSESIBPorcessor.cs" />
     <Compile Include="FSESOBPorcessor.cs" />
     <Compile Include="InteliPhoneBookService.cs">
       <SubType>Component</SubType>

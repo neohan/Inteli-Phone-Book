@@ -17,12 +17,13 @@ namespace InteliPhoneBookService
         #region /* thread sync variables*/
         static public int ServiceIsTerminating = 0;
         static public int SMSThreadTerminated = 0;
-        static public int CurlThreadTerminated = 0;
+        static public int FSIBThreadTerminated = 0;
         static public int FSOBThreadTerminated = 0;
         #endregion
 
         private SMSProcessor SMSProcessor;
         private FSESOBProcessor FSESOBProcessor;
+        private FSESIBProcessor FSESIBProcessor;
 
         static public List<SMSInfo> WaitingToSendSMSList = new List<SMSInfo>();
 
@@ -36,8 +37,10 @@ namespace InteliPhoneBookService
             log.Info("Starting...");
             SMSProcessor = new SMSProcessor();
             FSESOBProcessor = new FSESOBProcessor();
+            FSESIBProcessor = new FSESIBProcessor();
             ThreadPool.QueueUserWorkItem(new WaitCallback(SMSProcessor.DoWork), SMSProcessor);
             ThreadPool.QueueUserWorkItem(new WaitCallback(FSESOBProcessor.DoWork), FSESOBProcessor);
+            ThreadPool.QueueUserWorkItem(new WaitCallback(FSESIBProcessor.DoWork), FSESIBProcessor);
         }
 
         protected override void OnStop()
@@ -47,7 +50,7 @@ namespace InteliPhoneBookService
             DateTime StartTerminating = DateTime.Now;
             while (true)
             {
-                if (SMSThreadTerminated == 1 && CurlThreadTerminated == 1 && FSOBThreadTerminated == 1)
+                if (SMSThreadTerminated == 1 && FSIBThreadTerminated == 1 && FSOBThreadTerminated == 1)
                 {log.Info("Terminated, bye."); break;}
                 else
                 {
@@ -57,10 +60,10 @@ namespace InteliPhoneBookService
                     {
                         if (SMSThreadTerminated == 0)
                             log.Info("Something wrong happens in sms thread.");
-                        if (CurlThreadTerminated == 0)
-                            log.Info("Something wrong happens in fs-xml-curl thread.");
+                        if (FSIBThreadTerminated == 0)
+                            log.Info("Something wrong happens in fs-es-ib thread.");
                         if (FSOBThreadTerminated == 0)
-                            log.Info("Something wrong happens in fs-es thread.");
+                            log.Info("Something wrong happens in fs-es-ob thread.");
                         break;
                     }
                 }

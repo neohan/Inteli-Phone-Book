@@ -1,5 +1,5 @@
 ﻿//
-//负责流程：呼叫助理。
+//负责流程：外呼桥接。
 //
 using System;
 using System.Collections.Generic;
@@ -9,17 +9,17 @@ using System.Threading;
 
 namespace InteliPhoneBookService
 {
-    class FSESOBProcessor
+    class FSESIBProcessor
     {
-        static public log4net.ILog log = log4net.LogManager.GetLogger("eslob");
+        static public log4net.ILog log = log4net.LogManager.GetLogger("eslib");
 
         static public void DoWork(Object stateInfo)
         {
-            FSESOBProcessor esobProcessor = (FSESOBProcessor)stateInfo;
+            FSESIBProcessor esobProcessor = (FSESIBProcessor)stateInfo;
             while (true)
             {
                 if (InteliPhoneBookService.ServiceIsTerminating == 1)
-                { Interlocked.Increment(ref InteliPhoneBookService.FSOBThreadTerminated); break; }
+                { Interlocked.Increment(ref InteliPhoneBookService.FSIBThreadTerminated); break; }
                 Thread.Sleep(10);
             }
             log.Info("exited");
