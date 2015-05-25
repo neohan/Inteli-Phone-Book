@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace InteliPhoneBookService
 {
-    class FSESOBPorcessor
+    class FSESOBProcessor
     {
         public static log4net.ILog log = log4net.LogManager.GetLogger("esl");
 

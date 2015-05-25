@@ -15,10 +15,10 @@ namespace InteliPhoneBookService
     {
         static public log4net.ILog log = log4net.LogManager.GetLogger("sms");
 
-        static public int ReSendTimes = 0;              //重发短信次数
-        static private int ReSendAfterSeconds;          //重发短信间隔秒数
+        public int ReSendTimes = 0;              //重发短信次数
+        private int ReSendAfterSeconds;          //重发短信间隔秒数
 
-        static public bool Send(string mobile, string textMsg)
+        public bool Send(string mobile, string textMsg)
         {
             var result = false;
             string enterpriseCode = "daet";
@@ -47,7 +47,7 @@ namespace InteliPhoneBookService
             return result;
         }
 
-        static public string StringToMD5(string str, int i)
+        public string StringToMD5(string str, int i)
         {
             //获取要加密的字段，并转化为Byte[]数组
             byte[] data = System.Text.Encoding.Unicode.GetBytes(str.ToCharArray());
@@ -75,7 +75,7 @@ namespace InteliPhoneBookService
             }
         }
 
-        static public string GetHtmlFromUrl(string url)
+        public string GetHtmlFromUrl(string url)
         {
             string strRet = null;
 
@@ -101,7 +101,7 @@ namespace InteliPhoneBookService
             return strRet;
         }
 
-        static public void Initialize()
+        public void Initialize()
         {
             /*
              * 设置应该从数据库中获取,但如果连接数据库有问题,使用配置文件中的缺省参数。
@@ -122,11 +122,12 @@ namespace InteliPhoneBookService
 
         static public void DoWork(Object stateInfo)
         {
+            SMSProcessor smsProcessor = (SMSProcessor)stateInfo;
             string logMsg;
             bool bCanSend;
             SMSInfo waitingToSend = null;
 
-            Initialize();
+            smsProcessor.Initialize();
             while (true)
             {
                 if (InteliPhoneBookService.ServiceIsTerminating == 1)
@@ -146,7 +147,7 @@ namespace InteliPhoneBookService
                         {
                             DateTime dtNow = DateTime.Now;
                             TimeSpan timeDiff = dtNow.Subtract(smsInfo.lastsendtime_);
-                            if (timeDiff.TotalSeconds > ReSendAfterSeconds)
+                            if (timeDiff.TotalSeconds > smsProcessor.ReSendAfterSeconds)
                                 bCanSend = true;
                         }
                         if (bCanSend == true)
@@ -162,11 +163,11 @@ namespace InteliPhoneBookService
 
                 if (waitingToSend != null)
                 {
-                    if (Send(waitingToSend.mobileno_, waitingToSend.smmessage_) == false)
+                    if (smsProcessor.Send(waitingToSend.mobileno_, waitingToSend.smmessage_) == false)
                     {
                         logMsg = "\r\nsend fail.";
                         waitingToSend.sendtimes_ += 1;
-                        if (waitingToSend.sendtimes_ >= ReSendTimes)
+                        if (waitingToSend.sendtimes_ >= smsProcessor.ReSendTimes)
                             logMsg = "exceed re-send limit.";
                         else
                         {

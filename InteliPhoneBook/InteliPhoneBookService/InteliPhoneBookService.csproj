@@ -38,6 +38,9 @@
     <Reference Include="log4net">
       <HintPath>.\log4net.dll</HintPath>
     </Reference>
+    <Reference Include="MiniHttpd">
+      <HintPath>.\MiniHttpd.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.configuration" />
     <Reference Include="System.Configuration.Install" />
@@ -52,6 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FreeSwitchCurlPage.cs" />
     <Compile Include="FSESOBPorcessor.cs" />
     <Compile Include="FSXMLCurlProcessor.cs" />
     <Compile Include="InteliPhoneBookService.cs">
