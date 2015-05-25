@@ -1,4 +1,8 @@
-﻿using System;
+﻿//
+// 每次dynamic dialplan请求都必须检索数据库，如无法放问数据库，放一段缺省语音，然后挂断。
+// 这样的缺省处理，要求每个FreeSWITCH实例安装时必须存在这样的语音文件。这样的处理利于检查问题。
+//
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;

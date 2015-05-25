@@ -7,16 +7,21 @@ using System.Linq;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading;
+using InteliPhoneBook.Model;
 
 namespace InteliPhoneBookService
 {
     public partial class InteliPhoneBookService : ServiceBase
     {
-        public static log4net.ILog log = log4net.LogManager.GetLogger("root");
-        public static int ServiceIsTerminating = 0;
-        public static int SMSThreadTerminated = 0;
-        public static int CurlThreadTerminated = 0;
-        public static int FSOBThreadTerminated = 0;
+        static public log4net.ILog log = log4net.LogManager.GetLogger("root");
+        #region /* thread sync variables*/
+        static public int ServiceIsTerminating = 0;
+        static public int SMSThreadTerminated = 0;
+        static public int CurlThreadTerminated = 0;
+        static public int FSOBThreadTerminated = 0;
+        #endregion
+
+        static public List<SMSInfo> WaitingToSendSMSList = new List<SMSInfo>();
 
         public InteliPhoneBookService()
         {

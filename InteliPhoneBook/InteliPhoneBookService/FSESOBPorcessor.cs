@@ -1,4 +1,7 @@
-﻿using System;
+﻿//
+//负责两个流程：外呼桥接，和呼叫助理。
+//
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
