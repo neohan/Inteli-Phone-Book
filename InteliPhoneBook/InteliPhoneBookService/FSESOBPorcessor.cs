@@ -11,10 +11,11 @@ namespace InteliPhoneBookService
 {
     class FSESOBProcessor
     {
-        public static log4net.ILog log = log4net.LogManager.GetLogger("esl");
+        static public log4net.ILog log = log4net.LogManager.GetLogger("esl");
 
         static public void DoWork(Object stateInfo)
         {
+            FSESOBProcessor esobProcessor = (FSESOBProcessor)stateInfo;
             while (true)
             {
                 if (InteliPhoneBookService.ServiceIsTerminating == 1)

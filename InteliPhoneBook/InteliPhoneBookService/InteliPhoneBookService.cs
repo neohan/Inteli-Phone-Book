@@ -21,7 +21,6 @@ namespace InteliPhoneBookService
         static public int FSOBThreadTerminated = 0;
         #endregion
 
-        private FSXMLCurlProcessor FSXMLCurlProcessor;
         private SMSProcessor SMSProcessor;
         private FSESOBProcessor FSESOBProcessor;
 
@@ -35,12 +34,10 @@ namespace InteliPhoneBookService
         protected override void OnStart(string[] args)
         {
             log.Info("Starting...");
-            FSXMLCurlProcessor = new FSXMLCurlProcessor();
             SMSProcessor = new SMSProcessor();
             FSESOBProcessor = new FSESOBProcessor();
             ThreadPool.QueueUserWorkItem(new WaitCallback(SMSProcessor.DoWork), SMSProcessor);
             ThreadPool.QueueUserWorkItem(new WaitCallback(FSESOBProcessor.DoWork), FSESOBProcessor);
-            ThreadPool.QueueUserWorkItem(new WaitCallback(FSXMLCurlProcessor.DoWork), FSXMLCurlProcessor);
         }
 
         protected override void OnStop()

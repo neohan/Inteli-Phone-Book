@@ -55,9 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FreeSwitchCurlPage.cs" />
     <Compile Include="FSESOBPorcessor.cs" />
-    <Compile Include="FSXMLCurlProcessor.cs" />
     <Compile Include="InteliPhoneBookService.cs">
       <SubType>Component</SubType>
     </Compile>
