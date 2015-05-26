@@ -35,8 +35,14 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="ESL">
+      <HintPath>.\ESL.dll</HintPath>
+    </Reference>
     <Reference Include="log4net">
       <HintPath>.\log4net.dll</HintPath>
+    </Reference>
+    <Reference Include="ManagedEsl">
+      <HintPath>.\ManagedEsl.dll</HintPath>
     </Reference>
     <Reference Include="MiniHttpd">
       <HintPath>.\MiniHttpd.dll</HintPath>
@@ -79,7 +85,9 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
+    <None Include="app.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\InteliPhoneBook.Model\InteliPhoneBook.Model.csproj">
