@@ -60,9 +60,9 @@ namespace InteliPhoneBookService
             if (bConnectDBSuc == false)
             {
                 try { FSESLOutboundModeLocalPort = Int32.Parse(ConfigurationManager.AppSettings["FSESLOutboundModeLocalPort"]); }
-                catch (Exception e) { FSESLOutboundModeLocalPort = 8022; }
+                catch (Exception e) { FSESLOutboundModeLocalPort = 8022; } log.Info("FreeSWITCH ESL OutboundMode Local Port:" + FSESLOutboundModeLocalPort);
                 try { PlayWelcomeLimit = Int32.Parse(ConfigurationManager.AppSettings["PlayWelcomeLimit"]); }
-                catch (Exception e) { PlayWelcomeLimit = 3; }
+                catch (Exception e) { PlayWelcomeLimit = 3; } log.Info("Play Welcome Limit:" + PlayWelcomeLimit);
             }
         }
 
@@ -81,7 +81,8 @@ namespace InteliPhoneBookService
                 IPAddress ipAddress = Dns.Resolve("localhost").AddressList[0];
                 TcpListener tcpListener;
 
-                try { tcpListener =  new TcpListener(ipAddress, esobProcessor.FSESLOutboundModeLocalPort); }
+                log.Info("Listening on port:" + esobProcessor.FSESLOutboundModeLocalPort);
+                try { tcpListener =  new TcpListener(IPAddress.Parse("192.168.77.169"), esobProcessor.FSESLOutboundModeLocalPort); }
                 catch ( Exception e){ log.Error("new TcpListener error. do it again later.\r\n" + e.ToString()); Thread.Sleep(5000); continue;}
 
 
@@ -106,9 +107,7 @@ namespace InteliPhoneBookService
                             string strUuid = eslEvent.GetHeader("UNIQUE-ID", -1);
                             string user_entered_keys = "";
                             string flow_state = "play_welcome";
-                            string sip_ip = "";
-                            string sip_port = "";
-                            string sip_from_user = "";
+                            string sip_to_user = "", sip_from_user = "", sip_req_user = "";
                             DateTime play_done_or_key_pressed_time = DateTime.Now;
                             Int32 playWelcomeCount = 0, playSMSChoiceCount = 0, playEnterOtherPhoneNo = 0;
                             CallAssistFlowState callAssistFlowState = CallAssistFlowState.空闲;
@@ -120,23 +119,20 @@ namespace InteliPhoneBookService
                             while (eslConnection.Connected() == ESL_SUCCESS)
                             {
                                 eslEvent = eslConnection.RecvEventTimed(10); if (eslEvent == null) { continue; }
-                                //log.Info(eslEvent.Serialize(String.Empty));
-                                string name = eslEvent.GetHeader("Event-Name", -1);
-                                Console.WriteLine("Event-Name:" + name + "\r\n");
+                                strUuid = eslEvent.GetHeader("UNIQUE-ID", -1);
+                                string event_name = eslEvent.GetHeader("Event-Name", -1);
                                 string appname = eslEvent.GetHeader("Application", -1);
-                                Console.WriteLine("Application:" + appname + "\r\n\r\n");
-                                if (name == "CHANNEL_EXECUTE")
+                                if (event_name == "CHANNEL_EXECUTE")
                                 {
                                     if (eslEvent.GetHeader("Channel-Call-State", -1) == "RINGING")
                                     {
-                                        sip_ip = eslEvent.GetHeader("variable_sip_network_ip", -1);
-                                        sip_port = eslEvent.GetHeader("variable_sip_network_port", -1);
                                         sip_from_user = eslEvent.GetHeader("variable_sip_from_user", -1);
-                                        Console.WriteLine("RINGRING   Caller-Network-Addr:" + eslEvent.GetHeader("Caller-Network-Addr", -1) + "\r\n");
-                                        Console.WriteLine("RINGRING   Caller-Destination-Number:" + eslEvent.GetHeader("Caller-Destination-Number", -1) + "\r\n");
+                                        sip_to_user = eslEvent.GetHeader("variable_sip_to_user", -1);
+                                        sip_req_user = eslEvent.GetHeader("variable_sip_req_user", -1);
+                                        log.Info(String.Format("Incomming Call  CallAssitFlow  UNIQUE-ID:{0},  Ani:{1},  Dnis:{2},  SIP Trunk No:{3}", strUuid, sip_from_user, sip_to_user, sip_req_user));
                                     }
                                 }
-                                else if (name == "CHANNEL_EXECUTE_COMPLETE")
+                                else if (event_name == "CHANNEL_EXECUTE_COMPLETE")
                                 {
                                     string app_response = eslEvent.GetHeader("Application-Response", -1);
 
@@ -145,7 +141,7 @@ namespace InteliPhoneBookService
                                         if (1 == 1)
                                         {
                                             callAssistFlowState = CallAssistFlowState.无短信播放语音;
-                                            eslConnection.Execute("playback", "std_welcome.wav", String.Empty);
+                                            eslConnection.Execute("playback", "welcome-no.wav", String.Empty);
                                         }
                                         else
                                         {
@@ -198,7 +194,7 @@ namespace InteliPhoneBookService
                                     }
 
                                 }
-                                else if (name == "DTMF")
+                                else if (event_name == "DTMF")
                                 {
                                     string dtmf_digit = eslEvent.GetHeader("DTMF-Digit", -1);
                                     if (callAssistFlowState == CallAssistFlowState.播放开始语音)
@@ -249,7 +245,12 @@ namespace InteliPhoneBookService
                                     }
                                     else if (callAssistFlowState == CallAssistFlowState.播放输入其他号码语音)
                                     {
-                                        if (dtmf_digit == "1")
+                                        if (dtmf_digit == "*")
+                                        {
+                                            callAssistFlowState = CallAssistFlowState.播放输入其他号码语音;
+                                            eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
+                                        }
+                                        else if (dtmf_digit == "#")
                                         {
                                             callAssistFlowState = CallAssistFlowState.播放再见语音;
                                             eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
@@ -272,7 +273,7 @@ namespace InteliPhoneBookService
                             }
 
                             sckClient.Close();
-                            Console.WriteLine("Connection closed uuid:{0}", strUuid);
+                            Console.WriteLine("Connection closed. UNIQUE-ID:{0}", strUuid);
 
                         }, tcpListener);
 
