@@ -63,6 +63,8 @@
   <ItemGroup>
     <Compile Include="FSESIBPorcessor.cs" />
     <Compile Include="FSESOBPorcessor.cs" />
+    <Compile Include="HttpProcessor.cs" />
+    <Compile Include="InteliPhoneBookHttpPage.cs" />
     <Compile Include="InteliPhoneBookService.cs">
       <SubType>Component</SubType>
     </Compile>
