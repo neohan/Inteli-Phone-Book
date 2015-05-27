@@ -26,6 +26,8 @@
 //您有一个未接来电来自：6700（姓名，若号码内有匹配），呼叫时间：2015-2-14 14:00.
 //
 using System;
+using System.Data;
+using System.Data.SqlClient;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -64,6 +66,32 @@ namespace InteliPhoneBookService
                 try { PlayWelcomeLimit = Int32.Parse(ConfigurationManager.AppSettings["PlayWelcomeLimit"]); }
                 catch (Exception e) { PlayWelcomeLimit = 3; } log.Info("Play Welcome Limit:" + PlayWelcomeLimit);
             }
+        }
+
+        public bool SMSNotifyEnable(string p_ani, string p_dnis, string p_sipno)
+        {
+            StringBuilder strSQL = new StringBuilder();
+            strSQL.Append("select SMSNotify from UserInfo WHERE TelBG = \'" + p_dnis + "\'");
+            try
+            {
+                using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
+                {
+                    while (rdr.Read())
+                    {
+                        log.Info(String.Format("SMSNotify:{0},according to:{1}\r\n", rdr["SMSNotify"].ToString(), p_dnis));
+                        if (rdr["SMSNotify"].ToString() == "1")
+                            return true;
+                        else
+                            return false;
+                    }
+                    log.Info(String.Format("Cannot find any info.ani:{0},dnis:{1},sipno:{2}\r\n", p_ani, p_dnis, p_sipno));
+                }
+            }
+            catch (Exception e)
+            {
+                log.Info("Error occurs during SMSNotifyEnable function.\r\n" + e.Message);
+            }
+            return false;
         }
 
         static public void DoWork(Object stateInfo)
@@ -129,7 +157,7 @@ namespace InteliPhoneBookService
                                         sip_from_user = eslEvent.GetHeader("variable_sip_from_user", -1);
                                         sip_to_user = eslEvent.GetHeader("variable_sip_to_user", -1);
                                         sip_req_user = eslEvent.GetHeader("variable_sip_req_user", -1);
-                                        log.Info(String.Format("Incomming Call  CallAssitFlow  UNIQUE-ID:{0},  Ani:{1},  Dnis:{2},  SIP Trunk No:{3}", strUuid, sip_from_user, sip_to_user, sip_req_user));
+                                        log.Info(String.Format("Incomming Call  CallAssitFlow  UNIQUE-ID:{0},  Ani:{1},  Dnis:{2},  SIP Trunk No:{3}\r\n", strUuid, sip_from_user, sip_to_user, sip_req_user));
                                     }
                                 }
                                 else if (event_name == "CHANNEL_EXECUTE_COMPLETE")
@@ -137,17 +165,20 @@ namespace InteliPhoneBookService
                                     string app_response = eslEvent.GetHeader("Application-Response", -1);
 
                                     if (appname == "answer")
-                                    {//查询数据库决定执行哪个流程
-                                        if (1 == 1)
+                                    {//查询数据库原始被叫号码是否开启了短信通知功能
+                                        //语音文件名由sipno决定
+                                        if (esobProcessor.SMSNotifyEnable(sip_from_user, sip_to_user, sip_req_user) == false)
                                         {
                                             callAssistFlowState = CallAssistFlowState.无短信播放语音;
                                             eslConnection.Execute("playback", "welcome-no.wav", String.Empty);
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:answer\r\nFlow State:{1}\r\n", strUuid, CallAssistFlowState.无短信播放语音.ToString()));
                                         }
                                         else
                                         {
                                             ++playWelcomeCount;
                                             callAssistFlowState = CallAssistFlowState.播放开始语音;
-                                            eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
+                                            eslConnection.Execute("playback", "welcome.wav", String.Empty);
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:answer\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放开始语音.ToString(), playWelcomeCount));
                                         }
                                     }
                                     if (app_response == "FILE PLAYED")
@@ -156,34 +187,57 @@ namespace InteliPhoneBookService
                                         {
                                             callAssistFlowState = CallAssistFlowState.空闲;
                                             eslConnection.Execute("hangup", String.Empty, String.Empty);
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}\r\n", strUuid, CallAssistFlowState.无短信播放语音.ToString()));
                                         }
                                         else if (callAssistFlowState == CallAssistFlowState.播放开始语音)
                                         {
                                             if (playWelcomeCount >= 3)
                                             {
+                                                playWelcomeCount = 0;
                                                 callAssistFlowState = CallAssistFlowState.空闲;
                                                 eslConnection.Execute("hangup", String.Empty, String.Empty);
+                                                log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}  Exceed limit, hangup.\r\n", strUuid, CallAssistFlowState.播放开始语音.ToString(), playWelcomeCount));
                                             }
                                             else
                                             {
                                                 ++playWelcomeCount;
                                                 callAssistFlowState = CallAssistFlowState.播放开始语音;
-                                                eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
+                                                eslConnection.Execute("playback", "welcome.wav", String.Empty);
+                                                log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}  play again.\r\n", strUuid, CallAssistFlowState.播放开始语音.ToString(), playWelcomeCount));
                                             }
                                         }
                                         else if (callAssistFlowState == CallAssistFlowState.播放选择通知号码语音)
                                         {
                                             if (playSMSChoiceCount >= 3)
                                             {
-                                                //记录本机号码
+                                                playSMSChoiceCount = 0;
+                                                //记录本机号码 播放了三次这个语音相当于客户选择使用当前呼入主叫作为回电号码。
                                                 callAssistFlowState = CallAssistFlowState.空闲;
                                                 eslConnection.Execute("hangup", String.Empty, String.Empty);
+                                                log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}  Exceed limit, hangup.\r\n", strUuid, CallAssistFlowState.播放选择通知号码语音.ToString(), playSMSChoiceCount));
                                             }
                                             else
                                             {
                                                 ++playSMSChoiceCount;
-                                                callAssistFlowState = CallAssistFlowState.播放开始语音;
-                                                eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
+                                                eslConnection.Execute("playback", "callback-current.wav", String.Empty);
+                                                log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}.\r\n", strUuid, CallAssistFlowState.播放选择通知号码语音.ToString(), playSMSChoiceCount));
+                                            }
+                                        }
+                                        else if (callAssistFlowState == CallAssistFlowState.播放输入其他号码语音)
+                                        {
+                                            if (playEnterOtherPhoneNo >= 3)
+                                            {
+                                                playEnterOtherPhoneNo = 0;
+                                                //记录本机号码 播放了三次这个语音相当于客户选择使用当前呼入主叫作为回电号码。
+                                                callAssistFlowState = CallAssistFlowState.空闲;
+                                                eslConnection.Execute("hangup", String.Empty, String.Empty);
+                                                log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}  Exceed limit, hangup.\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), playEnterOtherPhoneNo));
+                                            }
+                                            else
+                                            {
+                                                ++playEnterOtherPhoneNo;
+                                                eslConnection.Execute("playback", "enter-other-phoneno.wav", String.Empty);
+                                                log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}.\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), playEnterOtherPhoneNo));
                                             }
                                         }
                                         else if (callAssistFlowState == CallAssistFlowState.播放再见语音)
@@ -204,20 +258,8 @@ namespace InteliPhoneBookService
                                             playWelcomeCount = 0;
                                             ++playSMSChoiceCount;
                                             callAssistFlowState = CallAssistFlowState.播放选择通知号码语音;
-                                            eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
-                                        }
-                                        else
-                                        {
-                                            if (playWelcomeCount >= 3)
-                                            {
-                                                callAssistFlowState = CallAssistFlowState.空闲;
-                                                eslConnection.Execute("hangup", String.Empty, String.Empty);
-                                            }
-                                            else
-                                            {
-                                                ++playWelcomeCount;
-                                                eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
-                                            }
+                                            eslConnection.Execute("playback", "callback-current.wav", String.Empty);
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:1\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放选择通知号码语音.ToString(), playSMSChoiceCount));
                                         }
                                     }
                                     else if (callAssistFlowState == CallAssistFlowState.播放选择通知号码语音)
@@ -225,55 +267,37 @@ namespace InteliPhoneBookService
                                         if (dtmf_digit == "1")
                                         {
                                             playSMSChoiceCount = 0;
-                                            ++playEnterOtherPhoneNo;
+                                            user_entered_keys = ""; playEnterOtherPhoneNo = 0; ++playEnterOtherPhoneNo;
                                             callAssistFlowState = CallAssistFlowState.播放输入其他号码语音;
-                                            eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
-                                        }
-                                        else
-                                        {
-                                            if (playSMSChoiceCount >= 3)
-                                            {//记录本机号码
-                                                callAssistFlowState = CallAssistFlowState.空闲;
-                                                eslConnection.Execute("hangup", String.Empty, String.Empty);
-                                            }
-                                            else
-                                            {
-                                                ++playSMSChoiceCount;
-                                                eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
-                                            }
+                                            eslConnection.Execute("playback", "enter-other-phoneno.wav", String.Empty);
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:1\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), playEnterOtherPhoneNo));
                                         }
                                     }
                                     else if (callAssistFlowState == CallAssistFlowState.播放输入其他号码语音)
                                     {
                                         if (dtmf_digit == "*")
                                         {
+                                            user_entered_keys = ""; playEnterOtherPhoneNo = 0; ++playEnterOtherPhoneNo;
                                             callAssistFlowState = CallAssistFlowState.播放输入其他号码语音;
-                                            eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
+                                            eslConnection.Execute("playback", "enter-other-phoneno.wav", String.Empty);
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:*\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), playEnterOtherPhoneNo));
                                         }
                                         else if (dtmf_digit == "#")
                                         {
                                             callAssistFlowState = CallAssistFlowState.播放再见语音;
-                                            eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
+                                            eslConnection.Execute("playback", "bye.wav", String.Empty);
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:#\r\nFlow State:{1}  DTMF String:{2}  Go to the last step.\r\n", strUuid, CallAssistFlowState.播放再见语音.ToString(), user_entered_keys));
                                         }
                                         else
                                         {
-                                            if (playEnterOtherPhoneNo >= 3)
-                                            {//记录本机号码
-                                                callAssistFlowState = CallAssistFlowState.空闲;
-                                                eslConnection.Execute("hangup", String.Empty, String.Empty);
-                                            }
-                                            else
-                                            {
-                                                ++playEnterOtherPhoneNo;
-                                                eslConnection.Execute("play_and_get_digits", "11 11 3 10000 # gbestsmbl/gbestsmbl-enter_notifyed_phoneno.wav gbestsmbl/gbestsmbl-enter_again.wav .+", String.Empty);
-                                            }
+                                            user_entered_keys += dtmf_digit;
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:{1}\r\nFlow State:{2}  DTMF String:{3}  Collect other dtmf keys.\r\n", strUuid, dtmf_digit, CallAssistFlowState.播放输入其他号码语音.ToString(), user_entered_keys));
                                         }
                                     }
                                 }
                             }
 
-                            sckClient.Close();
-                            Console.WriteLine("Connection closed. UNIQUE-ID:{0}", strUuid);
+                            log.Info(String.Format("Connection closed. UNIQUE-ID:{0}", strUuid));
 
                         }, tcpListener);
 

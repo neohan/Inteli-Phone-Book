@@ -16,7 +16,7 @@ namespace InteliPhoneBookService
         static public log4net.ILog log = log4net.LogManager.GetLogger("eslib");
 
         #region configuration data
-        public int FSESLInboundModeLocalPort = 0;                   //fs inbound mode local port
+        public int FSESLInboundModeServerPort = 0;                   //fs inbound mode server port
         #endregion
 
         public void Initialize()
@@ -31,8 +31,8 @@ namespace InteliPhoneBookService
 
             if (bConnectDBSuc == false)
             {
-                try { FSESLInboundModeLocalPort = Int32.Parse(ConfigurationManager.AppSettings["FSESLInboundModeLocalPort"]); }
-                catch (Exception e) { FSESLInboundModeLocalPort = 8022; } log.Info("FreeSWITCH ESL InboundMode Local Port:" + FSESLInboundModeLocalPort);
+                try { FSESLInboundModeServerPort = Int32.Parse(ConfigurationManager.AppSettings["FSESLInboundModeServerPort"]); }
+                catch (Exception e) { FSESLInboundModeServerPort = 8021; } log.Info("FreeSWITCH ESL InboundMode Server Port:" + FSESLInboundModeServerPort);
             }
         }
 
@@ -46,7 +46,7 @@ namespace InteliPhoneBookService
                 { Interlocked.Increment(ref InteliPhoneBookService.FSIBThreadTerminated); break; }
                 Thread.Sleep(10);
 
-                ESLconnection eslConnection = new ESLconnection("192.168.77.168", esibProcessor.FSESLInboundModeLocalPort.ToString(), "ClueCon");
+                ESLconnection eslConnection = new ESLconnection("192.168.77.168", esibProcessor.FSESLInboundModeServerPort.ToString(), "ClueCon");
                 if (eslConnection.Connected() != ESL_SUCCESS)
                 { log.Info("Error connecting to FreeSwitch, do it again later."); Thread.Sleep(5000); continue; }
                 ESLevent eslEvent = eslConnection.SendRecv("event plain ALL");
