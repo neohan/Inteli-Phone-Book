@@ -5,8 +5,9 @@ using System.Text;
 
 namespace InteliPhoneBook.Model
 {
-    class ClickToDial
+    public class ClickToDial
     {
+        public string TaskID;
         public string SIPGatewayIP;
         public string SIPGatewayPort;
         public string SIPServerIP;

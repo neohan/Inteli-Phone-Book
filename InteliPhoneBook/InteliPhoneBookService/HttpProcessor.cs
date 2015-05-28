@@ -48,6 +48,17 @@ namespace InteliPhoneBookService
 
             protected string OnGetDialplan(UriQuery query)
             {
+                lock (InteliPhoneBookService.ClickToDialMap)
+                {
+                    DateTime dtNow = DateTime.Now;
+                    string taskId = string.Format("{0:yyyyMMddHHmmssfff}", dtNow);
+                    InteliPhoneBook.Model.ClickToDial clickToDial = new InteliPhoneBook.Model.ClickToDial();
+                    clickToDial.TaskID = taskId;
+                    clickToDial.SIPGatewayIP = "192.168.77.168";
+                    InteliPhoneBookService.ClickToDialMap.Add(taskId, clickToDial);
+                    //这个taskId返回给页面，后续调用其它查询请求，以此taskId为标识。
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(FSESIBProcessor.ClickToDialDoWork), clickToDial);
+                }
                 //try{foreach (string key in query.AllKeys){;}}catch (Exception e){int i = 0;}
 
                 return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\r\n" +

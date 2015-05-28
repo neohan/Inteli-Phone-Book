@@ -28,6 +28,7 @@ namespace InteliPhoneBookService
         private HttpProcessor HttpProcessor;
 
         static public List<SMSInfo> WaitingToSendSMSList = new List<SMSInfo>();
+        static public Dictionary<string, ClickToDial> ClickToDialMap = new Dictionary<string, ClickToDial>();
 
         public InteliPhoneBookService()
         {
