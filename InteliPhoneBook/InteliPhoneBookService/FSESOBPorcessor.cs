@@ -42,6 +42,7 @@ namespace InteliPhoneBookService
     {
         static public readonly int ESL_SUCCESS = 1;
         static public log4net.ILog log = log4net.LogManager.GetLogger("eslob");
+        public static ManualResetEvent clientConnected = new ManualResetEvent(false);
         public enum CallAssistFlowState { 空闲=1, 无短信播放语音, 播放开始语音, 播放选择通知号码语音, 播放输入其他号码语音, 播放再见语音 }
 
         #region configuration data
@@ -121,12 +122,13 @@ namespace InteliPhoneBookService
                     log.Info("OutboundModeAsync, waiting for connections...");
 
                     while (true)
-                    {
+                    {//这个异步接收客户端连接的底层多线程模型是怎样的，需要详细考察下。
                         tcpListener.BeginAcceptSocket((asyncCallback) =>
                         {
                             TcpListener tcpListened = (TcpListener)asyncCallback.AsyncState;
 
                             Socket sckClient = tcpListened.EndAcceptSocket(asyncCallback);
+                            log.Info("Set ManualResetEvent object."); clientConnected.Set();
 
                             //Initializes a new instance of ESLconnection, and connects to the host $host on the port $port, and supplies $password to freeswitch
                             ESLconnection eslConnection = new ESLconnection(sckClient.Handle.ToInt32());
@@ -179,6 +181,17 @@ namespace InteliPhoneBookService
                                             callAssistFlowState = CallAssistFlowState.播放开始语音;
                                             eslConnection.Execute("playback", "welcome.wav", String.Empty);
                                             log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:answer\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放开始语音.ToString(), playWelcomeCount));
+                                        }
+                                    }
+                                    if (appname == "play_and_get_digits")
+                                    {
+                                        if (callAssistFlowState == CallAssistFlowState.播放输入其他号码语音)
+                                        {
+                                            callAssistFlowState = CallAssistFlowState.播放再见语音;
+                                            user_entered_keys = eslEvent.GetHeader("variable_inteliphonebook-other-phoneno", -1);
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application:play_and_get_digits\r\nFlow State:{1}  Digits:{2}  Go to the final step.\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), user_entered_keys));
+                                            log.Info(eslEvent.Serialize(String.Empty));
+                                            eslConnection.Execute("playback", "bye.wav", String.Empty);
                                         }
                                     }
                                     if (app_response == "FILE PLAYED")
@@ -269,7 +282,7 @@ namespace InteliPhoneBookService
                                             playSMSChoiceCount = 0;
                                             user_entered_keys = ""; playEnterOtherPhoneNo = 0; ++playEnterOtherPhoneNo;
                                             callAssistFlowState = CallAssistFlowState.播放输入其他号码语音;
-                                            eslConnection.Execute("playback", "enter-other-phoneno.wav", String.Empty);
+                                            eslConnection.Execute("play_and_get_digits", "1 11 3 10000 # enter-other-phoneno.wav enter-other-phoneno.wav inteliphonebook-other-phoneno .+ 4000", String.Empty);
                                             log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:1\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), playEnterOtherPhoneNo));
                                         }
                                     }
@@ -279,19 +292,11 @@ namespace InteliPhoneBookService
                                         {
                                             user_entered_keys = ""; playEnterOtherPhoneNo = 0; ++playEnterOtherPhoneNo;
                                             callAssistFlowState = CallAssistFlowState.播放输入其他号码语音;
-                                            eslConnection.Execute("playback", "enter-other-phoneno.wav", String.Empty);
-                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:*\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), playEnterOtherPhoneNo));
-                                        }
-                                        else if (dtmf_digit == "#")
-                                        {
-                                            callAssistFlowState = CallAssistFlowState.播放再见语音;
-                                            eslConnection.Execute("playback", "bye.wav", String.Empty);
-                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:#\r\nFlow State:{1}  DTMF String:{2}  Go to the last step.\r\n", strUuid, CallAssistFlowState.播放再见语音.ToString(), user_entered_keys));
-                                        }
-                                        else
-                                        {
-                                            user_entered_keys += dtmf_digit;
-                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:{1}\r\nFlow State:{2}  DTMF String:{3}  Collect other dtmf keys.\r\n", strUuid, dtmf_digit, CallAssistFlowState.播放输入其他号码语音.ToString(), user_entered_keys));
+                                            eslConnection.Execute("play_and_get_digits", "1 11 3 10000 # enter-other-phoneno.wav enter-other-phoneno.wav inteliphonebook-other-phoneno .+ 4000", String.Empty);
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:*\r\nFlow State:{1}  Times:{2}\r\n",
+                                                                    strUuid,
+                                                                    CallAssistFlowState.播放输入其他号码语音.ToString(),
+                                                                    playEnterOtherPhoneNo));
                                         }
                                     }
                                 }
@@ -301,6 +306,15 @@ namespace InteliPhoneBookService
 
                         }, tcpListener);
 
+
+                        TimeSpan timeSpan = new TimeSpan(100 * 100);
+                        while (clientConnected.WaitOne(timeSpan) == false)
+                        {
+                            if (InteliPhoneBookService.ServiceIsTerminating == 1) break;
+                        }
+                        if (InteliPhoneBookService.ServiceIsTerminating == 1) break;
+                        log.Info("ManualResetEvent object is reset, Begin Accept Socket again.");
+                        clientConnected.Reset();
                         Thread.Sleep(50);
                     }
                 }

@@ -50,11 +50,27 @@ namespace InteliPhoneBookService
             {
                 lock (InteliPhoneBookService.ClickToDialMap)
                 {
-                    DateTime dtNow = DateTime.Now;
-                    string taskId = string.Format("{0:yyyyMMddHHmmssfff}", dtNow);
+                    DateTime dtNow;
+                    int intValue = 100;
+                    string dateTimeStr = "", taskId = "";
+                    bool bKeyExist = true;
+                    while (bKeyExist)
+                    {
+                        ++intValue;
+                        if (intValue > 999)
+                            intValue = 100;
+                        dtNow = DateTime.Now;
+                        dateTimeStr = String.Format("{0:yyyyMMddHHmmssfff}", dtNow);
+                        taskId = String.Format("{0}{1}", dateTimeStr, intValue);
+                        bKeyExist = InteliPhoneBookService.ClickToDialMap.ContainsKey(taskId);
+                        Thread.Sleep(1);
+                    }
                     InteliPhoneBook.Model.ClickToDial clickToDial = new InteliPhoneBook.Model.ClickToDial();
+                    clickToDial.CreateTime = DateTime.Now;
                     clickToDial.TaskID = taskId;
                     clickToDial.SIPGatewayIP = "192.168.77.168";
+                    clickToDial.SIPServerIP = "192.168.77.250";
+                    clickToDial.SIPServerPort = "5060";
                     InteliPhoneBookService.ClickToDialMap.Add(taskId, clickToDial);
                     //这个taskId返回给页面，后续调用其它查询请求，以此taskId为标识。
                     ThreadPool.QueueUserWorkItem(new WaitCallback(FSESIBProcessor.ClickToDialDoWork), clickToDial);
