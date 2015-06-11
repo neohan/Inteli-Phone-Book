@@ -28,10 +28,12 @@ namespace InteliPhoneBookService
                 VirtualDirectory root = new VirtualDirectory("/", null);
                 server.Root = root;
 
-                // We want curl to call http://xxxx:7717/freeswitch/curl.fetch
+                // We want curl to call http://xxxx:7717/freeswitch/webapi
                 VirtualDirectory dir = new VirtualDirectory("freeswitch", root);
                 InteliPhoneBookHttpPage curlPage = new InteliPhoneBookHttpPage(dir);
-                curlPage.OnGetDialplan += OnGetDialplan;
+                curlPage.OnCreate += OnCreate;
+                curlPage.OnQueryStatus += OnQueryStatus;
+                curlPage.OnCancel += OnCancel;
                 dir.AddFile(curlPage);
                 root.AddDirectory(dir);
             }
@@ -46,13 +48,14 @@ namespace InteliPhoneBookService
                 server.Stop();
             }
 
-            protected string OnGetDialplan(UriQuery query)
+            protected string OnCreate(UriQuery query, string paramString)
             {
+                string taskId = "";
                 lock (InteliPhoneBookService.ClickToDialMap)
                 {
                     DateTime dtNow;
                     int intValue = 100;
-                    string dateTimeStr = "", taskId = "";
+                    string dateTimeStr = "";
                     bool bKeyExist = true;
                     while (bKeyExist)
                     {
@@ -75,20 +78,34 @@ namespace InteliPhoneBookService
                     //这个taskId返回给页面，后续调用其它查询请求，以此taskId为标识。
                     ThreadPool.QueueUserWorkItem(new WaitCallback(FSESIBProcessor.ClickToDialDoWork), clickToDial);
                 }
-                //try{foreach (string key in query.AllKeys){;}}catch (Exception e){int i = 0;}
+                return taskId;
+            }
 
-                return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\r\n" +
-                        "<document type=\"freeswitch/xml\">\r\n" +
-                        "  <section name=\"dialplan\" description=\"RE Dial Plan For FreeSwitch\">\r\n" +
-                        "    <context name=\"default\">\r\n" +
-                        "      <extension name=\"test9\">\r\n" +
-                        "        <condition field=\"destination_number\" expression=\"" + query["Caller-Destination-Number"] + "$\">\r\n" +
-                        "        <action application=\"socket\" data=\"192.168.77.169:8022 async full\" />\r\n" +
-                        "        </condition>\r\n" +
-                        "      </extension>\r\n" +
-                        "    </context>\r\n" +
-                        "  </section>\r\n" +
-                        "</document>\r\n";
+            protected string OnQueryStatus(UriQuery query, string paramString)
+            {
+                bool bKeyExist = InteliPhoneBookService.ClickToDialMap.ContainsKey(paramString);
+                if (bKeyExist)
+                {
+                    InteliPhoneBook.Model.ClickToDial clickToDial = null;
+                    InteliPhoneBookService.ClickToDialMap.TryGetValue(paramString, out clickToDial);
+                    return clickToDial.CurrentStatus;
+                }
+                else
+                    return "not found";
+            }
+
+            protected string OnCancel(UriQuery query, string paramString)
+            {
+                bool bKeyExist = InteliPhoneBookService.ClickToDialMap.ContainsKey(paramString);
+                if (bKeyExist)
+                {
+                    InteliPhoneBook.Model.ClickToDial clickToDial = null;
+                    InteliPhoneBookService.ClickToDialMap.TryGetValue(paramString, out clickToDial);
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(FSESIBProcessor.CancelClickToDialDoWork), clickToDial);
+                    return "";
+                }
+                else
+                    return "not found";
             }
         }
 

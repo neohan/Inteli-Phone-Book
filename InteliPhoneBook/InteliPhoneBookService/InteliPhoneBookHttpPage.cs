@@ -10,9 +10,10 @@ namespace InteliPhoneBookService
     class InteliPhoneBookHttpPage : IFile
     {
         private IDirectory parent = null;
-        public delegate string HandleQuery(UriQuery query);
-        public event HandleQuery OnGetDialplan;
-        public event HandleQuery OnGetUserDirectory;
+        public delegate string HandleQuery(UriQuery query, string paramString);
+        public event HandleQuery OnCreate;
+        public event HandleQuery OnQueryStatus;
+        public event HandleQuery OnCancel;
 
         public InteliPhoneBookHttpPage()
         {
@@ -45,14 +46,50 @@ namespace InteliPhoneBookService
         /// <param name="directory">The <see cref="IDirectory"/> of the parent directory.</param>
         public void OnFileRequested(HttpRequest request, IDirectory directory)
         {
-            UriQuery queryString = new UriQuery(GetPostData(request));
-            string dialplan = OnGetDialplan.Invoke(queryString);
-            request.Response.BeginChunkedOutput();
-            System.IO.StreamWriter writer = new StreamWriter(request.Response.ResponseContent);
-            writer.Write(dialplan);
-            writer.Flush();
-            writer.Close();
-            return;
+            string taskid = request.Query.Get("taskid");
+            string param = request.Query.Get("param");
+            string action = request.Query.Get("action");
+
+            if (action == null) { }
+            else if (action == "create")
+            {
+                if (OnCreate != null)
+                {
+                    UriQuery queryString = new UriQuery(GetPostData(request));
+                    string dialplan = OnCreate.Invoke(queryString, "");
+                    request.Response.BeginChunkedOutput();
+                    System.IO.StreamWriter writer = new StreamWriter(request.Response.ResponseContent);
+                    writer.Write(dialplan);
+                    writer.Flush();
+                    writer.Close();
+                }
+            }
+            else if (action == "cancel")
+            {
+                if (OnCancel != null)
+                {
+                    UriQuery queryString = new UriQuery(GetPostData(request));
+                    string dialplan = OnCancel.Invoke(queryString, taskid);
+                    request.Response.BeginChunkedOutput();
+                    System.IO.StreamWriter writer = new StreamWriter(request.Response.ResponseContent);
+                    writer.Write(dialplan);
+                    writer.Flush();
+                    writer.Close();
+                }
+            }
+            else if (action == "query")
+            {
+                if (OnQueryStatus != null)
+                {
+                    UriQuery queryString = new UriQuery(GetPostData(request));
+                    string dialplan = OnQueryStatus.Invoke(queryString, taskid);
+                    request.Response.BeginChunkedOutput();
+                    System.IO.StreamWriter writer = new StreamWriter(request.Response.ResponseContent);
+                    writer.Write(dialplan);
+                    writer.Flush();
+                    writer.Close();
+                }
+            }
             /*UriQuery queryString = new UriQuery(GetPostData(request));
             if (queryString["section"] == "dialplan")
             {
