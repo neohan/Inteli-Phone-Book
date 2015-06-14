@@ -35,6 +35,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Configuration;
+using InteliPhoneBook.Model;
 
 namespace InteliPhoneBookService
 {
@@ -95,6 +96,29 @@ namespace InteliPhoneBookService
             return false;
         }
 
+        public string GetCallerName(string p_ani)
+        {
+            StringBuilder strSQL = new StringBuilder();
+            strSQL.Append("select Name from UserInfo WHERE TelBG = \'" + p_ani + "\'");
+            try
+            {
+                using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
+                {
+                    while (rdr.Read())
+                    {
+                        log.Info(String.Format("Name:{0},according to:{1}\r\n", rdr["Name"].ToString(), p_ani));
+                        return rdr["Name"].ToString();
+                    }
+                    log.Info(String.Format("Cannot find name by ani:{0}\r\n", p_ani));
+                }
+            }
+            catch (Exception e)
+            {
+                log.Info("Error occurs during GetCallerName function.\r\n" + e.Message);
+            }
+            return "";
+        }
+
         static public void DoWork(Object stateInfo)
         {
             FSESOBProcessor esobProcessor = (FSESOBProcessor)stateInfo;
@@ -136,11 +160,11 @@ namespace InteliPhoneBookService
                             ESLevent eslEvent = eslConnection.GetInfo();
                             string strUuid = eslEvent.GetHeader("UNIQUE-ID", -1);
                             string user_entered_keys = "";
-                            string flow_state = "play_welcome";
                             string sip_to_user = "", sip_from_user = "", sip_req_user = "";
-                            DateTime play_done_or_key_pressed_time = DateTime.Now;
+                            DateTime incomming_time = DateTime.Now;
                             Int32 playWelcomeCount = 0, playSMSChoiceCount = 0, playEnterOtherPhoneNo = 0;
                             CallAssistFlowState callAssistFlowState = CallAssistFlowState.空闲;
+                            bool bCanSendSMS = false, bCallbackNoIsCurrent = false;
 
                             eslConnection.SendRecv("myevents");
                             eslConnection.SendRecv("divert_events on");
@@ -192,6 +216,8 @@ namespace InteliPhoneBookService
                                             log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application:play_and_get_digits\r\nFlow State:{1}  Digits:{2}  Go to the final step.\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), user_entered_keys));
                                             log.Info(eslEvent.Serialize(String.Empty));
                                             eslConnection.Execute("playback", "bye.wav", String.Empty);
+                                            bCanSendSMS = true;
+                                            bCallbackNoIsCurrent = false;
                                         }
                                     }
                                     if (app_response == "FILE PLAYED")
@@ -228,6 +254,7 @@ namespace InteliPhoneBookService
                                                 callAssistFlowState = CallAssistFlowState.空闲;
                                                 eslConnection.Execute("hangup", String.Empty, String.Empty);
                                                 log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}  Exceed limit, hangup.\r\n", strUuid, CallAssistFlowState.播放选择通知号码语音.ToString(), playSMSChoiceCount));
+                                                bCallbackNoIsCurrent = true; bCanSendSMS = true;
                                             }
                                             else
                                             {
@@ -245,6 +272,7 @@ namespace InteliPhoneBookService
                                                 callAssistFlowState = CallAssistFlowState.空闲;
                                                 eslConnection.Execute("hangup", String.Empty, String.Empty);
                                                 log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}  Exceed limit, hangup.\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), playEnterOtherPhoneNo));
+                                                bCallbackNoIsCurrent = true;
                                             }
                                             else
                                             {
@@ -271,6 +299,7 @@ namespace InteliPhoneBookService
                                             playWelcomeCount = 0;
                                             ++playSMSChoiceCount;
                                             callAssistFlowState = CallAssistFlowState.播放选择通知号码语音;
+                                            bCallbackNoIsCurrent = true; bCanSendSMS = true;
                                             eslConnection.Execute("playback", "callback-current.wav", String.Empty);
                                             log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:1\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放选择通知号码语音.ToString(), playSMSChoiceCount));
                                         }
@@ -279,6 +308,7 @@ namespace InteliPhoneBookService
                                     {
                                         if (dtmf_digit == "1")
                                         {
+                                            bCanSendSMS = false; bCallbackNoIsCurrent = false;
                                             playSMSChoiceCount = 0;
                                             user_entered_keys = ""; playEnterOtherPhoneNo = 0; ++playEnterOtherPhoneNo;
                                             callAssistFlowState = CallAssistFlowState.播放输入其他号码语音;
@@ -303,6 +333,19 @@ namespace InteliPhoneBookService
                             }
 
                             log.Info(String.Format("Connection closed. UNIQUE-ID:{0}", strUuid));
+                            if (bCanSendSMS)
+                            {
+                                SMSInfo smsInfo = new SMSInfo();
+                                string name = esobProcessor.GetCallerName(sip_from_user);
+                                if (string.IsNullOrEmpty(name)) ;
+                                else
+                                    name = "(" + name + ")";
+                                if (bCallbackNoIsCurrent)
+                                    smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}", sip_from_user, name, incomming_time);
+                                else
+                                    smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}", user_entered_keys, name, incomming_time);
+                                InteliPhoneBookService.WaitingToSendSMSList.Add(smsInfo);
+                            }
 
                         }, tcpListener);
 

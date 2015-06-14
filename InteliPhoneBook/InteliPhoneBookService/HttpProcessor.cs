@@ -28,8 +28,8 @@ namespace InteliPhoneBookService
                 VirtualDirectory root = new VirtualDirectory("/", null);
                 server.Root = root;
 
-                // We want curl to call http://xxxx:7717/freeswitch/webapi
-                VirtualDirectory dir = new VirtualDirectory("freeswitch", root);
+                // We want curl to call http://xxxx:7717/inteliphonebook/webapi
+                VirtualDirectory dir = new VirtualDirectory("inteliphonebook", root);
                 InteliPhoneBookHttpPage curlPage = new InteliPhoneBookHttpPage(dir);
                 curlPage.OnCreate += OnCreate;
                 curlPage.OnQueryStatus += OnQueryStatus;
