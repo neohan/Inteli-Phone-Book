@@ -70,10 +70,11 @@ namespace InteliPhoneBookService
             }
         }
 
-        public bool SMSNotifyEnable(string p_ani, string p_dnis, string p_sipno)
+        public bool SMSNotifyEnable(string p_ani, string p_dnis, string p_sipno, out string p_tel)
         {
+            p_tel = "";
             StringBuilder strSQL = new StringBuilder();
-            strSQL.Append("select SMSNotify from UserInfo WHERE TelBG = \'" + p_dnis + "\'");
+            strSQL.Append("select SMSNotify,TelSJ from UserInfo WHERE TelBG = \'" + p_dnis + "\'");
             try
             {
                 using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
@@ -82,7 +83,10 @@ namespace InteliPhoneBookService
                     {
                         log.Info(String.Format("SMSNotify:{0},according to:{1}\r\n", rdr["SMSNotify"].ToString(), p_dnis));
                         if (rdr["SMSNotify"].ToString() == "1")
+                        {
+                            p_tel = rdr["TelSJ"].ToString();
                             return true;
+                        }
                         else
                             return false;
                     }
@@ -160,7 +164,7 @@ namespace InteliPhoneBookService
                             ESLevent eslEvent = eslConnection.GetInfo();
                             string strUuid = eslEvent.GetHeader("UNIQUE-ID", -1);
                             string user_entered_keys = "";
-                            string sip_to_user = "", sip_from_user = "", sip_req_user = "";
+                            string sip_to_user = "", sip_from_user = "", sip_req_user = "", notify_tel_no = "";
                             DateTime incomming_time = DateTime.Now;
                             Int32 playWelcomeCount = 0, playSMSChoiceCount = 0, playEnterOtherPhoneNo = 0;
                             CallAssistFlowState callAssistFlowState = CallAssistFlowState.空闲;
@@ -168,7 +172,8 @@ namespace InteliPhoneBookService
 
                             eslConnection.SendRecv("myevents");
                             eslConnection.SendRecv("divert_events on");
-
+                            //流程启动前还需检索接入号对应的语音文件。存储在数据库内，依据sip_req_user
+                            //如此
                             eslConnection.Execute("answer", String.Empty, String.Empty);
                             while (eslConnection.Connected() == ESL_SUCCESS)
                             {
@@ -193,7 +198,7 @@ namespace InteliPhoneBookService
                                     if (appname == "answer")
                                     {//查询数据库原始被叫号码是否开启了短信通知功能
                                         //语音文件名由sipno决定
-                                        if (esobProcessor.SMSNotifyEnable(sip_from_user, sip_to_user, sip_req_user) == false)
+                                        if (esobProcessor.SMSNotifyEnable(sip_from_user, sip_to_user, sip_req_user, out notify_tel_no) == false)
                                         {
                                             callAssistFlowState = CallAssistFlowState.无短信播放语音;
                                             eslConnection.Execute("playback", "welcome-no.wav", String.Empty);
@@ -204,7 +209,7 @@ namespace InteliPhoneBookService
                                             ++playWelcomeCount;
                                             callAssistFlowState = CallAssistFlowState.播放开始语音;
                                             eslConnection.Execute("playback", "welcome.wav", String.Empty);
-                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:answer\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放开始语音.ToString(), playWelcomeCount));
+                                            log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:answer\r\nFlow State:{1}  Times:{2}\r\nNotify tel no:{3}\r\n", strUuid, CallAssistFlowState.播放开始语音.ToString(), playWelcomeCount, notify_tel_no));
                                         }
                                     }
                                     if (appname == "play_and_get_digits")
@@ -335,16 +340,22 @@ namespace InteliPhoneBookService
                             log.Info(String.Format("Connection closed. UNIQUE-ID:{0}", strUuid));
                             if (bCanSendSMS)
                             {
-                                SMSInfo smsInfo = new SMSInfo();
-                                string name = esobProcessor.GetCallerName(sip_from_user);
-                                if (string.IsNullOrEmpty(name)) ;
+                                if (String.IsNullOrEmpty(notify_tel_no))
+                                    log.Info(String.Format("UNIQUE-ID:{0}  Notify tel no is null,cannot create sm object.", strUuid));
                                 else
-                                    name = "(" + name + ")";
-                                if (bCallbackNoIsCurrent)
-                                    smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}", sip_from_user, name, incomming_time);
-                                else
-                                    smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}", user_entered_keys, name, incomming_time);
-                                InteliPhoneBookService.WaitingToSendSMSList.Add(smsInfo);
+                                {
+                                    SMSInfo smsInfo = new SMSInfo();
+                                    string name = esobProcessor.GetCallerName(sip_from_user);
+                                    smsInfo.mobileno_ = notify_tel_no;
+                                    if (string.IsNullOrEmpty(name)) ;
+                                    else
+                                        name = "(" + name + ")";
+                                    if (bCallbackNoIsCurrent)
+                                        smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}", sip_from_user, name, incomming_time);
+                                    else
+                                        smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}", user_entered_keys, name, incomming_time);
+                                    InteliPhoneBookService.WaitingToSendSMSList.Add(smsInfo);
+                                }
                             }
 
                         }, tcpListener);
