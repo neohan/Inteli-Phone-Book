@@ -48,7 +48,7 @@ namespace InteliPhoneBookService
                 server.Stop();
             }
 
-            protected string OnCreate(UriQuery query, string paramString)
+            protected string OnCreate(UriQuery query, string ani, string dnis, string sipgwip, string sipserverip, string sipserverport)
             {
                 string taskId = "";
                 lock (InteliPhoneBookService.ClickToDialMap)
@@ -71,9 +71,11 @@ namespace InteliPhoneBookService
                     InteliPhoneBook.Model.ClickToDial clickToDial = new InteliPhoneBook.Model.ClickToDial();
                     clickToDial.CreateTime = DateTime.Now;
                     clickToDial.TaskID = taskId;
-                    clickToDial.SIPGatewayIP = "192.168.77.168";
-                    clickToDial.SIPServerIP = "192.168.77.250";
-                    clickToDial.SIPServerPort = "5060";
+                    clickToDial.Ani = ani;
+                    clickToDial.Dnis = dnis;
+                    clickToDial.SIPGatewayIP = sipgwip;
+                    clickToDial.SIPServerIP = sipserverip;
+                    clickToDial.SIPServerPort = sipserverport;
                     InteliPhoneBookService.ClickToDialMap.Add(taskId, clickToDial);
                     //这个taskId返回给页面，后续调用其它查询请求，以此taskId为标识。
                     ThreadPool.QueueUserWorkItem(new WaitCallback(FSESIBProcessor.ClickToDialDoWork), clickToDial);

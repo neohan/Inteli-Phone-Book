@@ -59,10 +59,10 @@ namespace InteliPhoneBookService
             InteliPhoneBook.Model.ClickToDial clickToDial = (InteliPhoneBook.Model.ClickToDial)stateInfo;
             log.Info(String.Format("task:{0} thread starting...\r\n", clickToDial.TaskID));
             int reconnectTimes = 0;
-            string Ani = "4000", Dnis = "4001";
+            string Ani = clickToDial.Ani, Dnis = clickToDial.Dnis;
             string StateStr = "NONE", PrefixStr = "sofia/external/";
             while (true)
-            {
+            {//如果连不上fs也要求记录一下状态,利于诊断问题,这些信息同样也需要在街面上显示。
                 ESLconnection eslConnection = new ESLconnection(clickToDial.SIPGatewayIP, FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeServerPort, "ClueCon");
                 if (eslConnection.Connected() != ESL_SUCCESS)
                 {
@@ -81,6 +81,7 @@ namespace InteliPhoneBookService
                     { log.Info(String.Format("task:{0} exceed limit\r\n", clickToDial.TaskID));break; }
                     Thread.Sleep(1000); continue;
                 }
+                //发起呼叫前，检索拨号计划，进行相应处理。
                 eslEvent = eslConnection.Api("create_uuid", String.Empty);
                 string originateUuid = eslEvent.GetBody();
                 log.Info("create_uuid:" + originateUuid + "\r\n");
