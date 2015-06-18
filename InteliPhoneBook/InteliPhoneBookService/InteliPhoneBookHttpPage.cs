@@ -11,7 +11,7 @@ namespace InteliPhoneBookService
     {
         private IDirectory parent = null;
         public delegate string HandleQuery(UriQuery query, string paramString);
-        public delegate string HandleCreate(UriQuery query, string ani, string dnis, string sipgwip, string sipserverip, string sipserverport);
+        public delegate string HandleCreate(UriQuery query, string ani, string dnis, string sipgwip, string sipserverip, string sipserverport, string dialplanid);
         public event HandleCreate OnCreate;
         public event HandleQuery OnQueryStatus;
         public event HandleQuery OnCancel;
@@ -55,6 +55,7 @@ namespace InteliPhoneBookService
             string sipgwip = request.Query.Get("sipgwip");
             string sipsvrip = request.Query.Get("sipsvrip");
             string sipsvrport = request.Query.Get("sipsvrport");
+            string dialplanid = request.Query.Get("dialplanid");
 
             if (action == null) { }
             else if (action == "create")
@@ -62,7 +63,7 @@ namespace InteliPhoneBookService
                 if (OnCreate != null)
                 {
                     UriQuery queryString = new UriQuery(GetPostData(request));
-                    string dialplan = OnCreate.Invoke(queryString, ani, dnis, sipgwip, sipsvrip, sipsvrport);
+                    string dialplan = OnCreate.Invoke(queryString, ani, dnis, sipgwip, sipsvrip, sipsvrport, dialplanid);
                     request.Response.BeginChunkedOutput();
                     System.IO.StreamWriter writer = new StreamWriter(request.Response.ResponseContent);
                     writer.Write(dialplan);

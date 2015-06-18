@@ -4,6 +4,8 @@
 //用户是否具备外线拨打权限不在此处处理，所以提交给此程序的外呼请求均认定为具备拨打权限。
 //
 using System;
+using System.Data;
+using System.Data.SqlClient;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -43,6 +45,35 @@ namespace InteliPhoneBookService
                 try { FSESLInboundModeRecreateUUIDTimes = Int32.Parse(ConfigurationManager.AppSettings["FSESLInboundModeRecreateUUIDTimes"]); }
                 catch (Exception e) { FSESLInboundModeRecreateUUIDTimes = 3; } log.Info("FreeSWITCH ESL InboundMode Re-create UUID Limit:" + FSESLInboundModeRecreateUUIDTimes);
             }
+        }
+
+        public List<InteliPhoneBook.Model.DialRule> GetDialRules(string p_dialplanid)
+        {
+            List<InteliPhoneBook.Model.DialRule> dialRules = new List<InteliPhoneBook.Model.DialRule>();
+            StringBuilder strSQL = new StringBuilder();
+            strSQL.Append("select Number,DeleteLen,AddCrown from DialRules WHERE ID = \'" + p_dialplanid + "\' ORDER BY DisplayOrder");
+            log.Info(strSQL.ToString());
+            try
+            {
+                using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
+                {
+                    while (rdr.Read())
+                    {
+                        InteliPhoneBook.Model.DialRule dialRule = new InteliPhoneBook.Model.DialRule();
+                        dialRule.PhoneNumber = rdr["Number"].ToString();
+                        dialRule.DeleteLen = Convert.ToInt32(rdr["DeleteLen"].ToString());
+                        dialRule.PrefixToAdd = rdr["AddCrown"].ToString();
+                        dialRules.Add(dialRule);
+                        log.Info(String.Format("Number:{0}.  DeleteLen:{1}.  PrefixToAdd:{2}\r\n", dialRule.PhoneNumber, dialRule.DeleteLen, dialRule.PrefixToAdd));
+                    }
+                    return dialRules;
+                }
+            }
+            catch (Exception e)
+            {
+                log.Info("Error occurs during GetDialRules function.\r\n" + e.Message);
+            }
+            return null;
         }
 
         static public void DoWork(Object stateInfo)
@@ -89,6 +120,10 @@ namespace InteliPhoneBookService
                     Thread.Sleep(1000); continue;
                 }
                 //发起呼叫前，检索拨号计划，进行相应处理。
+                List<InteliPhoneBook.Model.DialRule> dialrules = FSESIBProcessor.FSESIBProcessorObj.GetDialRules(clickToDial.DialPlanID);
+                if (dialrules.Count > 0)
+                {
+                }
                 int recreateTimes = 0;
                 do
                 {
