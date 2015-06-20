@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Configuration;
+using System.Text.RegularExpressions;
 
 namespace InteliPhoneBookService
 {
@@ -51,7 +52,7 @@ namespace InteliPhoneBookService
         {
             List<InteliPhoneBook.Model.DialRule> dialRules = new List<InteliPhoneBook.Model.DialRule>();
             StringBuilder strSQL = new StringBuilder();
-            strSQL.Append("select Number,DeleteLen,AddCrown from DialRules WHERE ID = \'" + p_dialplanid + "\' ORDER BY DisplayOrder");
+            strSQL.Append("select Number,DeleteLen,AddCrown from DialRules WHERE PlanID = \'" + p_dialplanid + "\' ORDER BY DisplayOrder");
             log.Info(strSQL.ToString());
             try
             {
@@ -61,19 +62,52 @@ namespace InteliPhoneBookService
                     {
                         InteliPhoneBook.Model.DialRule dialRule = new InteliPhoneBook.Model.DialRule();
                         dialRule.PhoneNumber = rdr["Number"].ToString();
-                        dialRule.DeleteLen = Convert.ToInt32(rdr["DeleteLen"].ToString());
+                        try { dialRule.DeleteLen = Convert.ToInt32(rdr["DeleteLen"].ToString()); }catch (Exception e) { dialRule.DeleteLen = -1; }
                         dialRule.PrefixToAdd = rdr["AddCrown"].ToString();
                         dialRules.Add(dialRule);
-                        log.Info(String.Format("Number:{0}.  DeleteLen:{1}.  PrefixToAdd:{2}\r\n", dialRule.PhoneNumber, dialRule.DeleteLen, dialRule.PrefixToAdd));
+                        log.Info(String.Format("Number:{0}.  DeleteLen:{1}.  PrefixToAdd:{2}.  according to:{3}\r\n", dialRule.PhoneNumber, dialRule.DeleteLen, dialRule.PrefixToAdd, p_dialplanid));
                     }
                     return dialRules;
                 }
             }
             catch (Exception e)
             {
-                log.Info("Error occurs during GetDialRules function.\r\n" + e.Message);
+                log.Info(String.Format("Error occurs during GetDialRules function.  Dial Plan ID:{0}\r\n{1}", p_dialplanid, e.Message));
             }
             return null;
+        }
+
+        private string ReplaceQuestionMark(string p_originalString)
+        {
+            return p_originalString.Replace("?", "\\d");
+        }
+
+        private string ReplaceBarBreak(string p_originalString)
+        {
+            return p_originalString.Replace("-", "\\d+");
+        }
+
+        public string ApplyDialRules(string p_originalDnis, List<InteliPhoneBook.Model.DialRule> p_dialrules)
+        {
+            if (p_dialrules.Count == 0)
+                return p_originalDnis;
+            string phoneno = p_originalDnis;
+            foreach (InteliPhoneBook.Model.DialRule dialrule in p_dialrules)
+            {
+                if ( dialrule.DeleteLen == -1 ) continue;
+                string resultRegex;
+                resultRegex = ReplaceQuestionMark(dialrule.PhoneNumber);
+                resultRegex = ReplaceBarBreak(resultRegex);
+                resultRegex = "^" + resultRegex;
+                Regex dialRulsRegex = new Regex(resultRegex);
+                if (dialRulsRegex.IsMatch(p_originalDnis))
+                {
+                    phoneno = phoneno.Remove(0, dialrule.DeleteLen);
+                    phoneno = dialrule.PrefixToAdd + phoneno;
+                    break;
+                }
+            }
+            return phoneno;
         }
 
         static public void DoWork(Object stateInfo)
@@ -96,7 +130,7 @@ namespace InteliPhoneBookService
             log.Info(String.Format("task:{0} thread starting...\r\n", clickToDial.TaskID));
             int reconnectTimes = 0;
             string Ani = clickToDial.Ani, Dnis = clickToDial.Dnis;
-            string StateStr = "NONE", PrefixStr = "sofia/external/";
+            string StateStr = "NONE", PrefixStr = "sofia/external/", dialedNo;
             while (true)
             {//如果连不上fs也要求记录一下状态,利于诊断问题,这些信息同样也需要在界面上显示。
                 ESLconnection eslConnection = new ESLconnection(clickToDial.SIPGatewayIP, FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeServerPort, "ClueCon");
@@ -121,9 +155,7 @@ namespace InteliPhoneBookService
                 }
                 //发起呼叫前，检索拨号计划，进行相应处理。
                 List<InteliPhoneBook.Model.DialRule> dialrules = FSESIBProcessor.FSESIBProcessorObj.GetDialRules(clickToDial.DialPlanID);
-                if (dialrules.Count > 0)
-                {
-                }
+                Dnis = FSESIBProcessor.FSESIBProcessorObj.ApplyDialRules(clickToDial.Dnis, dialrules);
                 int recreateTimes = 0;
                 do
                 {
