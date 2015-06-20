@@ -25,6 +25,7 @@ namespace InteliPhoneBookService
         public int FSESLInboundModeServerPort = 0;                   //fs inbound mode server port
         public int FSESLInboundModeReconnectTimes = 0;                  //fs inbound mode reconnect times
         public int FSESLInboundModeRecreateUUIDTimes = 0;
+        public int FSESLInboundModeAniAnsTimeout = 0;
         #endregion
 
         public void Initialize()
@@ -45,6 +46,8 @@ namespace InteliPhoneBookService
                 catch (Exception e) { FSESLInboundModeReconnectTimes = 3; } log.Info("FreeSWITCH ESL InboundMode Reconnect Limit:" + FSESLInboundModeReconnectTimes);
                 try { FSESLInboundModeRecreateUUIDTimes = Int32.Parse(ConfigurationManager.AppSettings["FSESLInboundModeRecreateUUIDTimes"]); }
                 catch (Exception e) { FSESLInboundModeRecreateUUIDTimes = 3; } log.Info("FreeSWITCH ESL InboundMode Re-create UUID Limit:" + FSESLInboundModeRecreateUUIDTimes);
+                try {FSESLInboundModeAniAnsTimeout = Int32.Parse(ConfigurationManager.AppSettings["FSESLInboundModeAniAnsTimeout"]);}
+                catch (Exception e) { FSESLInboundModeAniAnsTimeout = 60; } log.Info("FreeSWITCH ESL InboundMode Ani Answer Timeout(s):" + FSESLInboundModeAniAnsTimeout);
             }
         }
 
@@ -89,7 +92,7 @@ namespace InteliPhoneBookService
 
         public string ApplyDialRules(string p_originalDnis, List<InteliPhoneBook.Model.DialRule> p_dialrules)
         {
-            if (p_dialrules.Count == 0)
+            if (p_dialrules == null || p_dialrules.Count == 0)
                 return p_originalDnis;
             string phoneno = p_originalDnis;
             foreach (InteliPhoneBook.Model.DialRule dialrule in p_dialrules)
@@ -175,7 +178,7 @@ namespace InteliPhoneBookService
                 string originateUuid = eslEvent.GetBody();
                 log.Info("create_uuid:" + originateUuid + "\r\n");
                 clickToDial.Uuid = originateUuid;
-                eslConnection.Bgapi("originate", "{api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerIP + ":" + clickToDial.SIPServerPort + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerIP + ":" + clickToDial.SIPServerPort + ")", String.Empty);
+                eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerIP + ":" + clickToDial.SIPServerPort + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerIP + ":" + clickToDial.SIPServerPort + ")", String.Empty);
                 while (eslConnection.Connected() == ESL_SUCCESS)
                 {
                     if (InteliPhoneBookService.ServiceIsTerminating == 1) break;
