@@ -37,6 +37,7 @@ namespace InteliPhoneBookService
                 var sendResult = GetHtmlFromUrl(url);
                 if (sendResult != null)
                 {
+                    log.Info("Send sms response:" + sendResult);
                     result = true;
                 }
             }
@@ -93,6 +94,7 @@ namespace InteliPhoneBookService
                 WebResponse hs = hr.GetResponse();
                 Stream sr = hs.GetResponseStream();
                 StreamReader ser = new StreamReader(sr, System.Text.Encoding.Default);
+                strRet = ser.ReadToEnd();
             }
             catch (Exception ex)
             {
@@ -126,6 +128,12 @@ namespace InteliPhoneBookService
             string logMsg;
             bool bCanSend;
             SMSInfo waitingToSend = null;
+
+            /*SMSInfo smsInfoa = new SMSInfo();
+            smsInfoa.ani_ = "139983";
+            smsInfoa.mobileno_ = "13916394304";
+            smsInfoa.smmessage_ = "这是一条测试信息。【企福惠】";
+            InteliPhoneBookService.WaitingToSendSMSList.Add(smsInfoa);*/
 
             smsProcessor.Initialize();
             while (true)

@@ -377,6 +377,12 @@ namespace InteliPhoneBookService
                                 log.Info(String.Format("Connection closed. UNIQUE-ID:{0}", strUuid));
                                 if (bCanSendSMS)
                                 {
+                                    if (String.IsNullOrEmpty(notify_tel_no) && callAssistFlowState == CallAssistFlowState.播放选择通知号码语音)
+                                    {
+                                        notify_tel_no = sip_from_user;
+                                        log.Info(String.Format("UNIQUE-ID:{0}\r\nLast Flow State is 播放输入其他号码语音.  Notify tel no is set to ani:{1}\r\n",
+                                                                strUuid, notify_tel_no));
+                                    }
                                     if (String.IsNullOrEmpty(notify_tel_no))
                                         log.Info(String.Format("UNIQUE-ID:{0}  Notify tel no is null,cannot create sm object.", strUuid));
                                     else
