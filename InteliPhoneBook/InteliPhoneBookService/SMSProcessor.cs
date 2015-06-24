@@ -37,7 +37,7 @@ namespace InteliPhoneBookService
                 var sendResult = GetHtmlFromUrl(url);
                 if (sendResult != null)
                 {
-                    log.Info("Send sms response:" + sendResult);
+                    log.Info("Send sms response:" + sendResult + ".  code:" + GetSMSResponseCodeDesc(sendResult));
                     result = true;
                 }
             }
@@ -119,6 +119,65 @@ namespace InteliPhoneBookService
                 catch (Exception e) { ReSendTimes = 3; }
                 try { ReSendAfterSeconds = Int32.Parse(ConfigurationManager.AppSettings["ReSendAfterSeconds"]); }
                 catch (Exception e) { ReSendAfterSeconds = 30; }
+            }
+        }
+
+        public string GetSMSResponseCodeDesc(string p_response)
+        {
+            string temp;
+            int pos = p_response.IndexOf(",");
+            if (pos >= 0)
+                temp = p_response.Remove(pos, p_response.Length - pos + 1);
+            else
+                temp = p_response;
+            switch (temp)
+            {
+                case "0":
+                    return "操作成功";
+                case "-1":
+                    return "签权失败";
+                case "-2":
+                    return "未检索到被叫号码";
+                case "-3":
+                    return "被叫号码过多";
+                case "-4":
+                    return "内容未签名";
+                case "-5":
+                    return "内容过长";
+                case "-6":
+                    return "余额不足";
+                case "-7":
+                    return "暂停发送";
+                case "-8":
+                    return "保留";
+                case "-9":
+                    return "定时发送时间格式错误";
+                case "-10":
+                    return "下发内容为空";
+                case "-11":
+                    return "账户无效";
+                case "-12":
+                    return "IP地址非法";
+                case "-13":
+                    return "操作频率快";
+                case "-14":
+                    return "操作失败";
+                case "-15":
+                    return "拓展码无效";
+                case "-16":
+                    return "取消定时,seqid错误";
+                case "-17":
+                    return "未开通报告";
+                case "-18":
+                    return "暂留";
+                case "-19":
+                    return "未开通上行";
+                case "-20":
+                    return "暂留";
+                case "-21":
+                    return "包含屏蔽词";
+                default:
+                    return "未知";
             }
         }
 
