@@ -164,11 +164,10 @@ namespace InteliPhoneBookService
 
                 /* add next line to a dialplan
                  <action application="socket" data="localhost:8022 async full" /> */
-                IPAddress ipAddress = Dns.Resolve("localhost").AddressList[0];
                 TcpListener tcpListener;
 
                 log.Info("Listening on port:" + esobProcessor.FSESLOutboundModeLocalPort);
-                try { tcpListener =  new TcpListener(IPAddress.Parse("192.168.77.169"), esobProcessor.FSESLOutboundModeLocalPort); }
+                try { tcpListener =  new TcpListener(IPAddress.Any, esobProcessor.FSESLOutboundModeLocalPort); }
                 catch ( Exception e){ log.Error("new TcpListener error. do it again later.\r\n" + e.ToString()); Thread.Sleep(5000); continue;}
 
 
