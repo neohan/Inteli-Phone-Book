@@ -64,11 +64,19 @@ namespace InteliPhoneBookService
                 {
                     UriQuery queryString = new UriQuery(GetPostData(request));
                     string dialplan = OnCreate.Invoke(queryString, ani, dnis, sipgwip, sipsvrip, sipsvrport, dialplanid);
-                    request.Response.BeginChunkedOutput();
+                    /*request.Response.BeginChunkedOutput();
                     System.IO.StreamWriter writer = new StreamWriter(request.Response.ResponseContent);
                     writer.Write(dialplan);
                     writer.Flush();
-                    writer.Close();
+                    writer.Close();*/
+
+                    MemoryStream stream = new MemoryStream(512);
+                    StreamWriter writer = new StreamWriter(stream);
+                    writer.WriteLine(dialplan);
+
+                    writer.Flush();
+                    request.Response.ContentType = ContentTypes.GetExtensionType(".text");
+                    request.Response.ResponseContent = stream;
                 }
             }
             else if (action == "cancel")
@@ -77,11 +85,18 @@ namespace InteliPhoneBookService
                 {
                     UriQuery queryString = new UriQuery(GetPostData(request));
                     string dialplan = OnCancel.Invoke(queryString, taskid);
-                    request.Response.BeginChunkedOutput();
+                    /*request.Response.BeginChunkedOutput();
                     System.IO.StreamWriter writer = new StreamWriter(request.Response.ResponseContent);
                     writer.Write(dialplan);
                     writer.Flush();
-                    writer.Close();
+                    writer.Close();*/
+                    MemoryStream stream = new MemoryStream(512);
+                    StreamWriter writer = new StreamWriter(stream);
+                    writer.WriteLine(dialplan);
+
+                    writer.Flush();
+                    request.Response.ContentType = ContentTypes.GetExtensionType(".text");
+                    request.Response.ResponseContent = stream;
                 }
             }
             else if (action == "query")
@@ -90,11 +105,18 @@ namespace InteliPhoneBookService
                 {
                     UriQuery queryString = new UriQuery(GetPostData(request));
                     string dialplan = OnQueryStatus.Invoke(queryString, taskid);
-                    request.Response.BeginChunkedOutput();
+                    /*request.Response.BeginChunkedOutput();
                     System.IO.StreamWriter writer = new StreamWriter(request.Response.ResponseContent);
                     writer.Write(dialplan);
                     writer.Flush();
-                    writer.Close();
+                    writer.Close();*/
+                    MemoryStream stream = new MemoryStream(512);
+                    StreamWriter writer = new StreamWriter(stream);
+                    writer.WriteLine(dialplan);
+
+                    writer.Flush();
+                    request.Response.ContentType = ContentTypes.GetExtensionType(".text");
+                    request.Response.ResponseContent = stream;
                 }
             }
             /*UriQuery queryString = new UriQuery(GetPostData(request));

@@ -192,8 +192,42 @@ namespace InteliPhoneBookService
                     string ChannelCallUUID = eslEvent.GetHeader("Channel-Call-UUID", -1);
                     string OtherLegUniqueID = eslEvent.GetHeader("Other-Leg-Unique-ID", -1);
                     string HangupCause = eslEvent.GetHeader("Hangup-Cause", -1);
-                    /*if ((EventName != "MESSAGE_WAITING")&&(EventName != "MESSAGE_QUERY"))
-                        log.Info(eslEvent.Serialize(String.Empty) + "\r\n");*/
+                    if ((EventName != "MESSAGE_WAITING")&&(EventName != "MESSAGE_QUERY"))
+                        log.Info(eslEvent.Serialize(String.Empty) + "\r\n");
+
+                    if (EventName == "BACKGROUND_JOB")
+                    {
+                        string eventBody = eslEvent.GetBody();
+                        if (eventBody.Contains("-ERR"))
+                        {
+                            if (StateStr == "NONE" || StateStr == "INIT" || StateStr == "START")
+                            {
+                                if (eventBody.Contains(" USER_BUSY"))
+                                {
+                                    StateStr = "ANIBUSY"; clickToDial.CurrentStatus = "ANIBUSY";
+                                }
+                                else
+                                {
+                                    StateStr = "ANIERR"; clickToDial.CurrentStatus = "ANIERR";
+                                }
+                                log.Info(String.Format("task:{0} finished.  State going to {1}.\r\n", clickToDial.TaskID, StateStr));
+                                break;
+                            }
+                            else if (StateStr == "DNISINIT" || StateStr == "DNISSTART")
+                            {
+                                if (eventBody.Contains(" USER_BUSY"))
+                                {
+                                    StateStr = "DNISBUSY"; clickToDial.CurrentStatus = "DNISBUSY";
+                                }
+                                else
+                                {
+                                    StateStr = "DNISERR"; clickToDial.CurrentStatus = "DNISERR";
+                                }
+                                log.Info(String.Format("task:{0} finished.  State going to {1}.\r\n", clickToDial.TaskID, StateStr));
+                                break;
+                            }
+                        }
+                    }
                     if (StateStr == "NONE")
                     {
                         if (EventName == "CHANNEL_OUTGOING" && UniqueUUID == originateUuid && ChannelName.Contains(PrefixStr + Ani + "@") == true)
@@ -238,7 +272,7 @@ namespace InteliPhoneBookService
                     {
                         if (EventName == "CHANNEL_STATE" && ChannelCallUUID == originateUuid && ChannelState == "CS_INIT" && ChannelName.Contains(PrefixStr + Dnis + "@") == true)
                         {
-                            StateStr = "DNISSTART"; clickToDial.CurrentStatus = "DNISINIT";
+                            StateStr = "DNISSTART"; clickToDial.CurrentStatus = "DNISSTART";
                             log.Info(String.Format("task:{0}  State going to DNISSTART.\r\n", clickToDial.TaskID));
                         }
                     }
