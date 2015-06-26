@@ -200,11 +200,15 @@ namespace InteliPhoneBookService
                         string eventBody = eslEvent.GetBody();
                         if (eventBody.Contains("-ERR"))
                         {
-                            if (StateStr == "NONE" || StateStr == "INIT" || StateStr == "START")
+                            if (StateStr == "NONE" || StateStr == "INIT" || StateStr == "START" || StateStr == "ANIRINGING")
                             {
                                 if (eventBody.Contains(" USER_BUSY"))
                                 {
                                     StateStr = "ANIBUSY"; clickToDial.CurrentStatus = "ANIBUSY";
+                                }
+                                else if (eventBody.Contains(" NO_ANSWER") || eventBody.Contains(" PROGRESS_TIMEOUT"))
+                                {
+                                    StateStr = "ANINOANS"; clickToDial.CurrentStatus = "ANINOANS";
                                 }
                                 else
                                 {
@@ -218,6 +222,10 @@ namespace InteliPhoneBookService
                                 if (eventBody.Contains(" USER_BUSY"))
                                 {
                                     StateStr = "DNISBUSY"; clickToDial.CurrentStatus = "DNISBUSY";
+                                }
+                                else if (eventBody.Contains(" NO_ANSWER"))
+                                {
+                                    StateStr = "DNISNOANS"; clickToDial.CurrentStatus = "DNISNOANS";
                                 }
                                 else
                                 {
