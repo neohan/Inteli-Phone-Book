@@ -210,6 +210,10 @@ namespace InteliPhoneBookService
                                 {
                                     StateStr = "ANINOANS"; clickToDial.CurrentStatus = "ANINOANS";
                                 }
+                                else if (eventBody.Contains(" UNALLOCATED_NUMBER") )
+                                {
+                                    StateStr = "ANIINVALID"; clickToDial.CurrentStatus = "ANIINVALID";
+                                }
                                 else
                                 {
                                     StateStr = "ANIERR"; clickToDial.CurrentStatus = "ANIERR";
@@ -290,6 +294,20 @@ namespace InteliPhoneBookService
                         {
                             StateStr = "DNISRINGING"; clickToDial.CurrentStatus = "DNISRINGING";
                             log.Info(String.Format("task:{0}  State going to DNISRINGING.\r\n", clickToDial.TaskID));
+                        }
+                        else if (EventName == "CHANNEL_CALLSTATE" && ChannelCallUUID == originateUuid && AnswerState == "hangup" && ChannelName.Contains(PrefixStr + Dnis + "@") == true
+                            && HangupCause == "NO_USER_RESPONSE" )
+                        {
+                            StateStr = "DNISNORESP"; clickToDial.CurrentStatus = "DNISNORESP";
+                            log.Info(String.Format("task:{0} finished  State going to DNISNORESP.\r\n", clickToDial.TaskID));
+                            break;
+                        }
+                        else if (EventName == "CHANNEL_CALLSTATE" && ChannelCallUUID == originateUuid && AnswerState == "hangup" && ChannelName.Contains(PrefixStr + Dnis + "@") == true
+                            && HangupCause == "UNALLOCATED_NUMBER")
+                        {
+                            StateStr = "DNISINVALID"; clickToDial.CurrentStatus = "DNISINVALID";
+                            log.Info(String.Format("task:{0} finished  State going to DNISINVALID.\r\n", clickToDial.TaskID));
+                            break;
                         }
                     }
                     else if (StateStr == "DNISRINGING")
