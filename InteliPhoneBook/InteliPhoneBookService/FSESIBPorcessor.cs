@@ -309,6 +309,13 @@ namespace InteliPhoneBookService
                             log.Info(String.Format("task:{0} finished  State going to DNISINVALID.\r\n", clickToDial.TaskID));
                             break;
                         }
+                        else if (EventName == "CHANNEL_CALLSTATE" && ChannelCallUUID == originateUuid && AnswerState == "hangup" && ChannelName.Contains(PrefixStr + Dnis + "@") == true
+                            && HangupCause == "NORMAL_TEMPORARY_FAILURE")
+                        {
+                            StateStr = "DNISTEMPFAIL"; clickToDial.CurrentStatus = "DNISTEMPFAIL";
+                            log.Info(String.Format("task:{0} finished  State going to DNISTEMPFAIL.\r\n", clickToDial.TaskID));
+                            break;
+                        }
                     }
                     else if (StateStr == "DNISRINGING")
                     {
