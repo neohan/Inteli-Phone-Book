@@ -237,6 +237,12 @@ namespace InteliPhoneBookService
                     foreach (SMSInfo smsInfo in InteliPhoneBookService.WaitingToSendSMSList)
                     {
                         bCanSend = false;
+                        smsInfo.smmessage_ = smsProcessor.SmsTemplate;
+                        smsInfo.smmessage_ = smsInfo.smmessage_.Replace("#ANI#", smsInfo.ani_).Replace("#DATETIME#", smsInfo.incommingtime_);
+                        if (String.IsNullOrEmpty(smsInfo.callbackno_) )
+                            smsInfo.smmessage_ = smsInfo.smmessage_.Replace("#CALLBACK#", smsInfo.ani_);
+                        else
+                            smsInfo.smmessage_ = smsInfo.smmessage_.Replace("#CALLBACK#", smsInfo.callbackno_);
                         logMsg = String.Format("waiting to send\r\n{0}, {1}, {2}, {3}, {4}, {5}", smsInfo.mobileno_, smsInfo.schedulesendtime_, smsInfo.ani_, smsInfo.dnis_, smsInfo.smmessage_, smsInfo.sendtimes_);
 
                         if (smsInfo.sendtimes_ == 0) { bCanSend = true; }

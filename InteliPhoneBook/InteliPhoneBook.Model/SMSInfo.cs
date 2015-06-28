@@ -9,6 +9,8 @@ namespace InteliPhoneBook.Model
     {
         public string mobileno_;
         public string smmessage_;
+        public string callbackno_;
+        public string incommingtime_;
         public string schedulesendtime_;
         public int sendtimes_;
         public string ani_;

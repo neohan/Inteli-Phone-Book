@@ -376,26 +376,24 @@ namespace InteliPhoneBookService
                                 log.Info(String.Format("Connection closed. UNIQUE-ID:{0}", strUuid));
                                 if (bCanSendSMS)
                                 {
-                                    if (String.IsNullOrEmpty(notify_tel_no) && callAssistFlowState == CallAssistFlowState.播放选择通知号码语音)
-                                    {
-                                        notify_tel_no = sip_from_user;
-                                        log.Info(String.Format("UNIQUE-ID:{0}\r\nLast Flow State is 播放输入其他号码语音.  Notify tel no is set to ani:{1}\r\n",
-                                                                strUuid, notify_tel_no));
-                                    }
-                                    if (String.IsNullOrEmpty(notify_tel_no))
-                                        log.Info(String.Format("UNIQUE-ID:{0}  Notify tel no is null,cannot create sm object.", strUuid));
+                                    if (String.IsNullOrEmpty(mobile_no))
+                                        log.Info(String.Format("UNIQUE-ID:{0}  Mobile no is null,cannot create sm object.", strUuid));
                                     else
                                     {
                                         SMSInfo smsInfo = new SMSInfo();
                                         string name = esobProcessor.GetCallerName(sip_from_user);
+                                        
                                         smsInfo.mobileno_ = mobile_no;
                                         if (string.IsNullOrEmpty(name)) ;
                                         else
                                             name = "(" + name + ")";
+                                        smsInfo.ani_ = sip_from_user + name;
+                                        smsInfo.incommingtime_ = incomming_time.ToString();
+                                        
                                         if (bCallbackNoIsCurrent)
-                                            smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}。", sip_from_user, name, incomming_time);
+                                            smsInfo.callbackno_ = sip_from_user;
                                         else
-                                            smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}。请回电至{3}。", sip_from_user, name, incomming_time, user_entered_keys);
+                                            smsInfo.callbackno_ = user_entered_keys;
                                         InteliPhoneBookService.WaitingToSendSMSList.Add(smsInfo);
                                     }
                                 }
