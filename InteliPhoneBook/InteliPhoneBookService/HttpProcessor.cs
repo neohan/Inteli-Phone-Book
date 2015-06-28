@@ -86,29 +86,35 @@ namespace InteliPhoneBookService
 
             protected string OnQueryStatus(UriQuery query, string paramString)
             {
-                bool bKeyExist = InteliPhoneBookService.ClickToDialMap.ContainsKey(paramString);
-                if (bKeyExist)
+                lock (InteliPhoneBookService.ClickToDialMap)
                 {
-                    InteliPhoneBook.Model.ClickToDial clickToDial = null;
-                    InteliPhoneBookService.ClickToDialMap.TryGetValue(paramString, out clickToDial);
-                    return clickToDial.CurrentStatus;
+                    bool bKeyExist = InteliPhoneBookService.ClickToDialMap.ContainsKey(paramString);
+                    if (bKeyExist)
+                    {
+                        InteliPhoneBook.Model.ClickToDial clickToDial = null;
+                        InteliPhoneBookService.ClickToDialMap.TryGetValue(paramString, out clickToDial);
+                        return clickToDial.CurrentStatus;
+                    }
+                    else
+                        return "NOTFOUND";
                 }
-                else
-                    return "not found";
             }
 
             protected string OnCancel(UriQuery query, string paramString)
             {
-                bool bKeyExist = InteliPhoneBookService.ClickToDialMap.ContainsKey(paramString);
-                if (bKeyExist)
+                lock (InteliPhoneBookService.ClickToDialMap)
                 {
-                    InteliPhoneBook.Model.ClickToDial clickToDial = null;
-                    InteliPhoneBookService.ClickToDialMap.TryGetValue(paramString, out clickToDial);
-                    ThreadPool.QueueUserWorkItem(new WaitCallback(FSESIBProcessor.CancelClickToDialDoWork), clickToDial);
-                    return "";
+                    bool bKeyExist = InteliPhoneBookService.ClickToDialMap.ContainsKey(paramString);
+                    if (bKeyExist)
+                    {
+                        InteliPhoneBook.Model.ClickToDial clickToDial = null;
+                        InteliPhoneBookService.ClickToDialMap.TryGetValue(paramString, out clickToDial);
+                        ThreadPool.QueueUserWorkItem(new WaitCallback(FSESIBProcessor.CancelClickToDialDoWork), clickToDial);
+                        return "";
+                    }
+                    else
+                        return "NOTFOUND";
                 }
-                else
-                    return "not found";
             }
         }
 
