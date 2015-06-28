@@ -24,7 +24,7 @@
 //信息已记录，再见。
 
 //短信通知示例：
-//您有一个未接来电来自：6700（姓名，若号码内有匹配），呼叫时间：2015-2-14 14:00.
+//您有一个未接来电来自：6700（姓名，若号码内有匹配），呼叫时间：2015-2-14 14:00:00。请回电至139。
 //
 using System;
 using System.Data;
@@ -110,7 +110,7 @@ namespace InteliPhoneBookService
                 {
                     while (rdr.Read())
                     {
-                        log.Info(String.Format("SMSNotify:{0},according to:{1}\r\n", rdr["SMSNotify"].ToString(), p_dnis));
+                        log.Info(String.Format("SMSNotify:{0},  Mobile:{1},  according to:{2}\r\n", rdr["SMSNotify"].ToString(), rdr["TelSJ"].ToString(), p_dnis));
                         if (rdr["SMSNotify"].ToString() == "1")
                         {
                             p_tel = rdr["TelSJ"].ToString();
@@ -194,7 +194,7 @@ namespace InteliPhoneBookService
                             string fs_host = eslEvent.GetHeader("variable_sip_req_host", -1);
                             string strUuid = eslEvent.GetHeader("UNIQUE-ID", -1);
                             string user_entered_keys = "";
-                            string sip_to_user = "", sip_from_user = "", sip_req_user = "", notify_tel_no = "";
+                            string sip_to_user = "", sip_from_user = "", sip_req_user = "", notify_tel_no = "", mobile_no = "";
                             DateTime incomming_time = DateTime.Now;
                             Int32 playWelcomeCount = 0, playSMSChoiceCount = 0, playEnterOtherPhoneNo = 0;
                             CallAssistFlowState callAssistFlowState = CallAssistFlowState.空闲;
@@ -234,7 +234,7 @@ namespace InteliPhoneBookService
                                         if (appname == "answer")
                                         {//查询数据库原始被叫号码是否开启了短信通知功能
                                             //语音文件名由sipno决定
-                                            if (esobProcessor.SMSNotifyEnable(sip_from_user, sip_to_user, sip_req_user, out notify_tel_no) == false)
+                                            if (esobProcessor.SMSNotifyEnable(sip_from_user, sip_to_user, sip_req_user, out mobile_no) == false)
                                             {
                                                 callAssistFlowState = CallAssistFlowState.无短信播放语音;
                                                 eslConnection.Execute("playback", "welcome-no.wav", String.Empty);
@@ -388,14 +388,14 @@ namespace InteliPhoneBookService
                                     {
                                         SMSInfo smsInfo = new SMSInfo();
                                         string name = esobProcessor.GetCallerName(sip_from_user);
-                                        smsInfo.mobileno_ = notify_tel_no;
+                                        smsInfo.mobileno_ = mobile_no;
                                         if (string.IsNullOrEmpty(name)) ;
                                         else
                                             name = "(" + name + ")";
                                         if (bCallbackNoIsCurrent)
-                                            smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}", sip_from_user, name, incomming_time);
+                                            smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}。", sip_from_user, name, incomming_time);
                                         else
-                                            smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}", user_entered_keys, name, incomming_time);
+                                            smsInfo.smmessage_ = String.Format("您有一个未接来电来自：{0}{1}，呼叫时间：{2}。请回电至{3}。", sip_from_user, name, incomming_time, user_entered_keys);
                                         InteliPhoneBookService.WaitingToSendSMSList.Add(smsInfo);
                                     }
                                 }

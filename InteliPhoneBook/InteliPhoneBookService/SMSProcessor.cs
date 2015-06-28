@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Data;
+using System.Data.SqlClient;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,34 +19,38 @@ namespace InteliPhoneBookService
 
         public int ReSendTimes = 0;              //重发短信次数
         private int ReSendAfterSeconds;          //重发短信间隔秒数
+        public string EnterpriseCode;
+        public string UserID;
+        public string Pass;
+        public string SignName;
+        public string SmsTemplate;
 
         public bool Send(string mobile, string textMsg)
         {
-            var result = false;
-            string enterpriseCode = "daet";
-            string uid = "50467";
-            string pass = "daet01";
-            string auth = StringToMD5(enterpriseCode + pass, 32);
+            bool result = false;
+            string auth = StringToMD5(EnterpriseCode + Pass, 32);
             string url = "http://210.5.158.31/hy?uid={0}&auth={1}&mobile={2}&msg={3}&expid=0";
 
             string content = textMsg;
             System.Text.Encoding encode = System.Text.Encoding.GetEncoding("GBK");
             content = HttpUtility.UrlEncode(content, encode);
-            url = string.Format(url, uid, auth, mobile, content);
+            url = string.Format(url, UserID, auth, mobile, content);
 
             try
             {
-                var sendResult = GetHtmlFromUrl(url);
+                string sendResult = GetHtmlFromUrl(url);
                 if (sendResult != null)
                 {
-                    log.Info("Send sms response:" + sendResult + ".  code:" + GetSMSResponseCodeDesc(sendResult));
-                    result = true;
+                    log.Info("Send sms response:1");
+                    log.Info("Send sms response:" + sendResult + ".  code:" + GetSMSResponseCodeDesc(sendResult)); log.Info("Send sms response:2");
+                    if (sendResult.IndexOf("0,") == 0 )
+                        result = true;
                 }
+                else
+                    log.Info("Send sms response is null");
             }
-            catch (Exception ex)
-            {
-                result = false;
-            }
+            catch (Exception ex) { result = false; log.Info("Send sms exception:" + ex.Message); }
+
             return result;
         }
 
@@ -103,6 +109,37 @@ namespace InteliPhoneBookService
             return strRet;
         }
 
+        public bool GetSMConfig()
+        {
+            bool bFound = false;
+            StringBuilder strSQL = new StringBuilder();
+            strSQL.Append("SELECT CompanyCode,LoginId,LoginPwd,SignName,SmsTemplate from SmsGateway WHERE Enabled = 1");
+            log.Info(strSQL.ToString());
+            try
+            {
+                using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
+                {
+                    while (rdr.Read())
+                    {
+                        EnterpriseCode = rdr["CompanyCode"].ToString();
+                        UserID = rdr["LoginId"].ToString();
+                        Pass = rdr["LoginPwd"].ToString();
+                        SignName = rdr["SignName"].ToString();
+                        SmsTemplate = rdr["SmsTemplate"].ToString();
+                        log.Info(String.Format("CompanyCode:{0}.  LoginId:{1}.  LoginPwd:{2}.  SignName:{3}.  SmsTemplate:{4}.  \r\n",
+                                                rdr["CompanyCode"].ToString(), rdr["LoginId"].ToString(),
+                                                rdr["LoginPwd"].ToString(), rdr["SignName"].ToString(), rdr["SmsTemplate"].ToString()));
+                        bFound = true; break;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                log.Info("Error occurs during GetSMConfig function.\r\n" + e.Message);
+            }
+            return bFound;
+        }
+
         public void Initialize()
         {
             /*
@@ -110,9 +147,6 @@ namespace InteliPhoneBookService
              * 从SystemConfig表内取？
              */
             bool bConnectDBSuc = false;
-            
-            //这里放查询数据库代码。
-
             if (bConnectDBSuc == false)
             {
                 try { ReSendTimes = Int32.Parse(ConfigurationManager.AppSettings["ReSendTimes"]); }
@@ -120,6 +154,8 @@ namespace InteliPhoneBookService
                 try { ReSendAfterSeconds = Int32.Parse(ConfigurationManager.AppSettings["ReSendAfterSeconds"]); }
                 catch (Exception e) { ReSendAfterSeconds = 30; }
             }
+
+            GetSMConfig();
         }
 
         public string GetSMSResponseCodeDesc(string p_response)
@@ -127,7 +163,7 @@ namespace InteliPhoneBookService
             string temp;
             int pos = p_response.IndexOf(",");
             if (pos >= 0)
-                temp = p_response.Remove(pos, p_response.Length - pos + 1);
+                temp = p_response.Remove(pos, p_response.Length - pos);
             else
                 temp = p_response;
             switch (temp)
@@ -188,12 +224,6 @@ namespace InteliPhoneBookService
             bool bCanSend;
             SMSInfo waitingToSend = null;
 
-            /*SMSInfo smsInfoa = new SMSInfo();
-            smsInfoa.ani_ = "139983";
-            smsInfoa.mobileno_ = "13916394304";
-            smsInfoa.smmessage_ = "这是一条测试信息。【企福惠】";
-            InteliPhoneBookService.WaitingToSendSMSList.Add(smsInfoa);*/
-
             smsProcessor.Initialize();
             while (true)
             {
@@ -235,10 +265,10 @@ namespace InteliPhoneBookService
                         logMsg = "\r\nsend fail.";
                         waitingToSend.sendtimes_ += 1;
                         if (waitingToSend.sendtimes_ >= smsProcessor.ReSendTimes)
-                            logMsg = "exceed re-send limit.";
+                            logMsg += "exceed re-send limit.";
                         else
                         {
-                            logMsg = "re-send later.";
+                            logMsg += "re-send later.";
                             waitingToSend.lastsendtime_ = DateTime.Now;
                             lock (InteliPhoneBookService.WaitingToSendSMSList)
                             {
@@ -247,7 +277,7 @@ namespace InteliPhoneBookService
                         }
                     }
                     else
-                        logMsg = "\r\nsend suc.";
+                        logMsg = "send suc.";
                     log.Info(logMsg);
                     waitingToSend = null;//是否还需要存入数据库有待考虑。??????????
                 }
