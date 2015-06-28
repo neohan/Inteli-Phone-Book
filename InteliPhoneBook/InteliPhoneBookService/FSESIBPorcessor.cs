@@ -158,7 +158,7 @@ namespace InteliPhoneBookService
                 }
                 //发起呼叫前，检索拨号计划，进行相应处理。
                 List<InteliPhoneBook.Model.DialRule> dialrules = FSESIBProcessor.FSESIBProcessorObj.GetDialRules(clickToDial.DialPlanID);
-                Dnis = FSESIBProcessor.FSESIBProcessorObj.ApplyDialRules(clickToDial.Dnis, dialrules);
+                Dnis = clickToDial.Dnis;
                 int recreateTimes = 0;
                 do
                 {
