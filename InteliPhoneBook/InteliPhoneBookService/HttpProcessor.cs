@@ -68,6 +68,24 @@ namespace InteliPhoneBookService
                         bKeyExist = InteliPhoneBookService.ClickToDialMap.ContainsKey(taskId);
                         Thread.Sleep(1);
                     }
+                    int nCount = 0;
+                    bool bFound;
+                    while ( true )
+                    {//删除那些已经存在了很长时间的外拨对象。
+                        bFound = false;
+                        foreach(InteliPhoneBook.Model.ClickToDial deleteClickToDial in InteliPhoneBookService.ClickToDialMap.Values)
+                        {
+                            DateTime dtNowTime = DateTime.Now;
+                            TimeSpan timeDiff = dtNowTime.Subtract(deleteClickToDial.CreateTime);
+                            if (timeDiff.TotalSeconds > 300)
+                            {
+                                bFound = true; log.Info(String.Format("Remove Task:{0}.\r\n", deleteClickToDial.TaskID)); 
+                                InteliPhoneBookService.ClickToDialMap.Remove(deleteClickToDial.TaskID);break;
+                            }
+                        }
+                        if (bFound == false) break;
+                        ++nCount; if (nCount > 5) break;
+                    }
                     InteliPhoneBook.Model.ClickToDial clickToDial = new InteliPhoneBook.Model.ClickToDial();
                     clickToDial.CreateTime = DateTime.Now;
                     clickToDial.TaskID = taskId;

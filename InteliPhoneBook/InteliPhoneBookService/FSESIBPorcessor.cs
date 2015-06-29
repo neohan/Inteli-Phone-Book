@@ -51,68 +51,6 @@ namespace InteliPhoneBookService
             }
         }
 
-        public List<InteliPhoneBook.Model.DialRule> GetDialRules(string p_dialplanid)
-        {
-            List<InteliPhoneBook.Model.DialRule> dialRules = new List<InteliPhoneBook.Model.DialRule>();
-            StringBuilder strSQL = new StringBuilder();
-            strSQL.Append("select Number,DeleteLen,AddCrown from DialRules WHERE PlanID = \'" + p_dialplanid + "\' ORDER BY DisplayOrder");
-            log.Info(strSQL.ToString());
-            try
-            {
-                using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
-                {
-                    while (rdr.Read())
-                    {
-                        InteliPhoneBook.Model.DialRule dialRule = new InteliPhoneBook.Model.DialRule();
-                        dialRule.PhoneNumber = rdr["Number"].ToString();
-                        try { dialRule.DeleteLen = Convert.ToInt32(rdr["DeleteLen"].ToString()); }catch (Exception e) { dialRule.DeleteLen = -1; }
-                        dialRule.PrefixToAdd = rdr["AddCrown"].ToString();
-                        dialRules.Add(dialRule);
-                        log.Info(String.Format("Number:{0}.  DeleteLen:{1}.  PrefixToAdd:{2}.  according to:{3}\r\n", dialRule.PhoneNumber, dialRule.DeleteLen, dialRule.PrefixToAdd, p_dialplanid));
-                    }
-                    return dialRules;
-                }
-            }
-            catch (Exception e)
-            {
-                log.Info(String.Format("Error occurs during GetDialRules function.  Dial Plan ID:{0}\r\n{1}", p_dialplanid, e.Message));
-            }
-            return null;
-        }
-
-        private string ReplaceQuestionMark(string p_originalString)
-        {
-            return p_originalString.Replace("?", "\\d");
-        }
-
-        private string ReplaceBarBreak(string p_originalString)
-        {
-            return p_originalString.Replace("-", "\\d+");
-        }
-
-        public string ApplyDialRules(string p_originalDnis, List<InteliPhoneBook.Model.DialRule> p_dialrules)
-        {
-            if (p_dialrules == null || p_dialrules.Count == 0)
-                return p_originalDnis;
-            string phoneno = p_originalDnis;
-            foreach (InteliPhoneBook.Model.DialRule dialrule in p_dialrules)
-            {
-                if ( dialrule.DeleteLen == -1 ) continue;
-                string resultRegex;
-                resultRegex = ReplaceQuestionMark(dialrule.PhoneNumber);
-                resultRegex = ReplaceBarBreak(resultRegex);
-                resultRegex = "^" + resultRegex;
-                Regex dialRulsRegex = new Regex(resultRegex);
-                if (dialRulsRegex.IsMatch(p_originalDnis))
-                {
-                    phoneno = phoneno.Remove(0, dialrule.DeleteLen);
-                    phoneno = dialrule.PrefixToAdd + phoneno;
-                    break;
-                }
-            }
-            return phoneno;
-        }
-
         static public void DoWork(Object stateInfo)
         {
             FSESIBProcessor esibProcessor = (FSESIBProcessor)stateInfo;
@@ -156,8 +94,6 @@ namespace InteliPhoneBookService
                     { log.Info(String.Format("task:{0} exceed limit\r\n", clickToDial.TaskID)); clickToDial.CurrentStatus = "EXCEEDLIMIT"; break; }
                     Thread.Sleep(1000); continue;
                 }
-                //发起呼叫前，检索拨号计划，进行相应处理。
-                List<InteliPhoneBook.Model.DialRule> dialrules = FSESIBProcessor.FSESIBProcessorObj.GetDialRules(clickToDial.DialPlanID);
                 Dnis = clickToDial.Dnis;
                 int recreateTimes = 0;
                 do
