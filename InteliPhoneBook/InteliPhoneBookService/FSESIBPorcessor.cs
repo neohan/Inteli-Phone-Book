@@ -17,6 +17,9 @@ namespace InteliPhoneBookService
 {
     class FSESIBProcessor
     {
+        private const string INSERT_TABLE = " CallLog ";
+        private const string INSERT_PARAMS = " (UserID,Ani,Dnis,StartDateTime,SucFlag,CallType) values(@userid,@ani,@dnis,@startdatetime,@sucflag,1)  ";
+        private const string UPDATE_WHERES = " WHERE ID = (SELECT SipRelay.ID FROM UserInfo, Branch, SipRelay WHERE UserInfo.id = @userid AND UserInfo.BranchId = Branch.ID AND Branch.RelayId = SipRelay.ID ) ";
         static public readonly int ESL_SUCCESS = 1;
         static public log4net.ILog log = log4net.LogManager.GetLogger("eslib");
 
@@ -48,6 +51,43 @@ namespace InteliPhoneBookService
                 catch (Exception e) { FSESLInboundModeRecreateUUIDTimes = 3; } log.Info("FreeSWITCH ESL InboundMode Re-create UUID Limit:" + FSESLInboundModeRecreateUUIDTimes);
                 try {FSESLInboundModeAniAnsTimeout = Int32.Parse(ConfigurationManager.AppSettings["FSESLInboundModeAniAnsTimeout"]);}
                 catch (Exception e) { FSESLInboundModeAniAnsTimeout = 60; } log.Info("FreeSWITCH ESL InboundMode Ani Answer Timeout(s):" + FSESLInboundModeAniAnsTimeout);
+            }
+        }
+
+        public void InsertCallLog(string p_userid, string p_ani, string p_dnis, bool p_dialsuc, DateTime p_time)
+        {
+            int result;
+            try
+            {
+                StringBuilder strSQL = new StringBuilder();
+                strSQL.Append("insert into ").Append(INSERT_TABLE).Append(INSERT_PARAMS);
+
+                SqlParameter[] parms = new SqlParameter[] {
+                new SqlParameter("@userid", p_userid),
+                new SqlParameter("@ani", p_ani),
+                new SqlParameter("@dnis", p_dnis),
+                new SqlParameter("@sucflag", p_dialsuc?1:0),
+                new SqlParameter("@startdatetime", p_time.ToString())};
+
+                SqlHelper.ExecuteNonQuery(strSQL.ToString(), out result, parms);
+            }
+            catch (Exception e)
+            {
+                log.Info("Error occurs during inserting calllog.\r\n" + e.Message);
+            }
+
+            try
+            {
+                StringBuilder strSQL = new StringBuilder();
+                strSQL.Append("UPDATE SipRelay SET CallTimes = CallTimes + 1 ").Append(UPDATE_WHERES);
+
+                SqlParameter[] parms = new SqlParameter[] { new SqlParameter("@userid", p_userid) };
+
+                SqlHelper.ExecuteNonQuery(strSQL.ToString(), out result, parms);
+            }
+            catch (Exception e)
+            {
+                log.Info("Error occurs during updating calltimes field of siprelay table.\r\n" + e.Message);
             }
         }
 
@@ -114,6 +154,7 @@ namespace InteliPhoneBookService
                 string originateUuid = eslEvent.GetBody();
                 log.Info("create_uuid:" + originateUuid + "\r\n");
                 clickToDial.Uuid = originateUuid;
+                DateTime clickdial_time = DateTime.Now;
                 eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerIP + ":" + clickToDial.SIPServerPort + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerIP + ":" + clickToDial.SIPServerPort + ")", String.Empty);
                 while (eslConnection.Connected() == ESL_SUCCESS)
                 {
@@ -270,6 +311,8 @@ namespace InteliPhoneBookService
                     }
                 }
                 eslConnection.Disconnect();
+                FSESIBProcessor.FSESIBProcessorObj.InsertCallLog(clickToDial.UserID, clickToDial.Ani, clickToDial.Dnis, 
+                    (StateStr == "COMPLETE")?true:false, clickdial_time);
                 break;
             }
             log.Info(String.Format("task:{0} thread exited\r\n", clickToDial.TaskID));

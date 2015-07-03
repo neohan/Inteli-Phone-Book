@@ -46,6 +46,8 @@ namespace InteliPhoneBookService
         static public log4net.ILog log = log4net.LogManager.GetLogger("eslob");
         public static ManualResetEvent clientConnected = new ManualResetEvent(false);
         public enum CallAssistFlowState { 空闲=1, 无短信播放语音, 播放开始语音, 播放选择通知号码语音, 播放输入其他号码语音, 播放再见语音 }
+        private const string INSERT_TABLE = " CallLog ";
+        private const string INSERT_PARAMS = " (UserID,Ani,Dnis,StartDateTime,SucFlag,CallType) values(@userid,@ani,@dnis,@startdatetime,0,2)  ";
 
         #region configuration data
         public int FSESLOutboundModeLocalPort = 0;              //fs outbound mode local port
@@ -71,11 +73,16 @@ namespace InteliPhoneBookService
             }
         }
 
-        public bool CallIsValid(string p_fromip, string p_fsip, string p_sipno)
+        public bool CallIsValid(string p_fromip, string p_fsip, string p_sipno, out string voice_welcome_no, out string voice_welcome, out string voice_callbak, out string voice_input, out string voice_bye)
         {
+            voice_welcome_no = "";
+            voice_welcome = "";
+            voice_callbak = "";
+            voice_input = "";
+            voice_bye = "";
             bool bFound = false;
             StringBuilder strSQL = new StringBuilder();
-            strSQL.Append("select VoiceHello from SipGateway, SipRelay, CallAssistant WHERE SipGateway.ID = SipRelay.GatewayId AND SipRelay.ID = CallAssistant.ID AND SipGateway.IPAddr = \'" + p_fsip + "\' AND SipRelay.IPAddr = \'" + p_fromip + "\' AND CallAssistant.Assistant = \'" + p_sipno + "\'");
+            strSQL.Append("select VoiceHello,VoiceHelloMsg,VoiceMessage,VoiceInput,VoiceBye from SipGateway, SipRelay, CallAssistant WHERE SipGateway.ID = SipRelay.GatewayId AND SipRelay.ID = CallAssistant.ID AND SipGateway.IPAddr = \'" + p_fsip + "\' AND SipRelay.IPAddr = \'" + p_fromip + "\' AND CallAssistant.Assistant = \'" + p_sipno + "\'");
             log.Info(strSQL.ToString());
             try
             {
@@ -83,7 +90,14 @@ namespace InteliPhoneBookService
                 {
                     while (rdr.Read())
                     {
-                        log.Info(String.Format("VoiceHello:{0}\r\n", rdr["VoiceHello"].ToString()));
+                        voice_welcome_no = rdr["VoiceHello"].ToString();
+                        voice_welcome = rdr["VoiceHelloMsg"].ToString();
+                        voice_callbak = rdr["VoiceMessage"].ToString();
+                        voice_input = rdr["VoiceInput"].ToString();
+                        voice_bye = rdr["VoiceBye"].ToString();
+                        log.Info(String.Format("VoiceHello:{0}.  VoiceHelloMsg:{1}.  VoiceMessage:{2}.  VoiceInput:{3}.  VoiceBye:{4}.\r\n",
+                                                rdr["VoiceHello"].ToString(), rdr["VoiceHelloMsg"].ToString(),
+                                                rdr["VoiceMessage"].ToString(), rdr["VoiceInput"].ToString(), rdr["VoiceBye"].ToString()));
                         bFound = true;
                     }
                     if ( bFound == true )
@@ -99,20 +113,21 @@ namespace InteliPhoneBookService
             return bFound;
         }
 
-        public bool SMSNotifyEnable(string p_ani, string p_dnis, string p_sipno, out string p_tel)
+        public bool SMSNotifyEnable(string p_ani, string p_dnis, string p_sipno, out string p_tel, out string p_userid)
         {
-            p_tel = "";
+            p_tel = ""; p_userid = "";
             StringBuilder strSQL = new StringBuilder();
-            strSQL.Append("select SMSNotify,TelSJ from UserInfo WHERE TelBG = \'" + p_dnis + "\'");
+            strSQL.Append("select ID,SMSNotify,TelSJ from UserInfo WHERE TelBG = \'" + p_dnis + "\'");
             try
             {
                 using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
                 {
                     while (rdr.Read())
                     {
-                        log.Info(String.Format("SMSNotify:{0},  Mobile:{1},  according to:{2}\r\n", rdr["SMSNotify"].ToString(), rdr["TelSJ"].ToString(), p_dnis));
+                        log.Info(String.Format("UserID:{0},  SMSNotify:{1},  Mobile:{2},  according to:{3}\r\n", rdr["ID"].ToString(), rdr["SMSNotify"].ToString(), rdr["TelSJ"].ToString(), p_dnis));
                         if (rdr["SMSNotify"].ToString() == "1")
                         {
+                            p_userid = rdr["ID"].ToString();
                             p_tel = rdr["TelSJ"].ToString();
                             return true;
                         }
@@ -150,6 +165,28 @@ namespace InteliPhoneBookService
                 log.Info("Error occurs during GetCallerName function.\r\n" + e.Message);
             }
             return "";
+        }
+
+        public void InsertCallLog(string p_userid, string p_ani, string p_dnis, DateTime p_time)
+        {
+            int result;
+            try
+            {
+                StringBuilder strSQL = new StringBuilder();
+                strSQL.Append("insert into ").Append(INSERT_TABLE).Append(INSERT_PARAMS);
+
+                SqlParameter[] parms = new SqlParameter[] {
+                new SqlParameter("@userid", p_userid),
+                new SqlParameter("@ani", p_ani),
+                new SqlParameter("@dnis", p_dnis),
+                new SqlParameter("@startdatetime", p_time.ToString())};
+
+                SqlHelper.ExecuteNonQuery(strSQL.ToString(), out result, parms);
+            }
+            catch (Exception e)
+            {
+                log.Info("Error occurs during inserting calllog.\r\n" + e.Message);
+            }
         }
 
         static public void DoWork(Object stateInfo)
@@ -193,15 +230,15 @@ namespace InteliPhoneBookService
                             string sip_from_host = eslEvent.GetHeader("variable_sip_from_host", -1);
                             string fs_host = eslEvent.GetHeader("variable_sip_req_host", -1);
                             string strUuid = eslEvent.GetHeader("UNIQUE-ID", -1);
-                            string user_entered_keys = "";
-                            string sip_to_user = "", sip_from_user = "", sip_req_user = "", notify_tel_no = "", mobile_no = "";
+                            string user_entered_keys = "", voice_welcome_no = "", voice_welcome = "", voice_callbak = "", voice_input = "", voice_bye = "";
+                            string sip_to_user = "", sip_from_user = "", sip_req_user = "", notify_tel_no = "", mobile_no = "", user_id = "";
                             DateTime incomming_time = DateTime.Now;
                             Int32 playWelcomeCount = 0, playSMSChoiceCount = 0, playEnterOtherPhoneNo = 0;
                             CallAssistFlowState callAssistFlowState = CallAssistFlowState.空闲;
-                            bool bCanSendSMS = false, bCallbackNoIsCurrent = false; log.Info(eslEvent.Serialize(String.Empty));
+                            bool bCanSendSMS = false, bCallbackNoIsCurrent = false, bCallIsValid = true; log.Info(eslEvent.Serialize(String.Empty));
                             sip_req_user = eslEvent.GetHeader("Caller-Destination-Number", -1);
-                            if (esobProcessor.CallIsValid(sip_from_host, fs_host, sip_req_user) == false)
-                                eslConnection.Disconnect();
+                            if (esobProcessor.CallIsValid(sip_from_host, fs_host, sip_req_user, out voice_welcome_no, out voice_welcome, out voice_callbak, out voice_input, out voice_bye) == false)
+                            { eslConnection.Disconnect(); bCallIsValid = false; }
                             else
                             {
                                 //log.Info(eslEvent.Serialize(String.Empty));
@@ -234,17 +271,17 @@ namespace InteliPhoneBookService
                                         if (appname == "answer")
                                         {//查询数据库原始被叫号码是否开启了短信通知功能
                                             //语音文件名由sipno决定
-                                            if (esobProcessor.SMSNotifyEnable(sip_from_user, sip_to_user, sip_req_user, out mobile_no) == false)
+                                            if (esobProcessor.SMSNotifyEnable(sip_from_user, sip_to_user, sip_req_user, out mobile_no, out user_id) == false)
                                             {
                                                 callAssistFlowState = CallAssistFlowState.无短信播放语音;
-                                                eslConnection.Execute("playback", "welcome-no.wav", String.Empty);
+                                                eslConnection.Execute("playback", voice_welcome_no, String.Empty);
                                                 log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:answer\r\nFlow State:{1}\r\n", strUuid, CallAssistFlowState.无短信播放语音.ToString()));
                                             }
                                             else
                                             {
                                                 ++playWelcomeCount;
                                                 callAssistFlowState = CallAssistFlowState.播放开始语音;
-                                                eslConnection.Execute("playback", "welcome.wav", String.Empty);
+                                                eslConnection.Execute("playback", voice_welcome, String.Empty);
                                                 log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:answer\r\nFlow State:{1}  Times:{2}\r\nNotify tel no:{3}\r\n", strUuid, CallAssistFlowState.播放开始语音.ToString(), playWelcomeCount, notify_tel_no));
                                             }
                                         }
@@ -256,7 +293,7 @@ namespace InteliPhoneBookService
                                                 user_entered_keys = eslEvent.GetHeader("variable_inteliphonebook-other-phoneno", -1);
                                                 log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application:play_and_get_digits\r\nFlow State:{1}  Digits:{2}  Go to the final step.\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), user_entered_keys));
                                                 log.Info(eslEvent.Serialize(String.Empty));
-                                                eslConnection.Execute("playback", "bye.wav", String.Empty);
+                                                eslConnection.Execute("playback", voice_bye, String.Empty);
                                                 bCanSendSMS = true;
                                                 bCallbackNoIsCurrent = false;
                                             }
@@ -282,7 +319,7 @@ namespace InteliPhoneBookService
                                                 {
                                                     ++playWelcomeCount;
                                                     callAssistFlowState = CallAssistFlowState.播放开始语音;
-                                                    eslConnection.Execute("playback", "welcome.wav", String.Empty);
+                                                    eslConnection.Execute("playback", voice_welcome, String.Empty);
                                                     log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}  play again.\r\n", strUuid, CallAssistFlowState.播放开始语音.ToString(), playWelcomeCount));
                                                 }
                                             }
@@ -300,7 +337,7 @@ namespace InteliPhoneBookService
                                                 else
                                                 {
                                                     ++playSMSChoiceCount;
-                                                    eslConnection.Execute("playback", "callback-current.wav", String.Empty);
+                                                    eslConnection.Execute("playback", voice_callbak, String.Empty);
                                                     log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}.\r\n", strUuid, CallAssistFlowState.播放选择通知号码语音.ToString(), playSMSChoiceCount));
                                                 }
                                             }
@@ -318,7 +355,7 @@ namespace InteliPhoneBookService
                                                 else
                                                 {
                                                     ++playEnterOtherPhoneNo;
-                                                    eslConnection.Execute("playback", "enter-other-phoneno.wav", String.Empty);
+                                                    eslConnection.Execute("playback", voice_input, String.Empty);
                                                     log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application-Response:FILE PLAYED\r\nFlow State:{1}  Times:{2}.\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), playEnterOtherPhoneNo));
                                                 }
                                             }
@@ -341,7 +378,7 @@ namespace InteliPhoneBookService
                                                 ++playSMSChoiceCount;
                                                 callAssistFlowState = CallAssistFlowState.播放选择通知号码语音;
                                                 bCallbackNoIsCurrent = true; bCanSendSMS = true;
-                                                eslConnection.Execute("playback", "callback-current.wav", String.Empty);
+                                                eslConnection.Execute("playback", voice_callbak, String.Empty);
                                                 log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:1\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放选择通知号码语音.ToString(), playSMSChoiceCount));
                                             }
                                         }
@@ -353,7 +390,7 @@ namespace InteliPhoneBookService
                                                 playSMSChoiceCount = 0;
                                                 user_entered_keys = ""; playEnterOtherPhoneNo = 0; ++playEnterOtherPhoneNo;
                                                 callAssistFlowState = CallAssistFlowState.播放输入其他号码语音;
-                                                eslConnection.Execute("play_and_get_digits", "1 11 3 10000 # enter-other-phoneno.wav enter-other-phoneno.wav inteliphonebook-other-phoneno .+ 4000", String.Empty);
+                                                eslConnection.Execute("play_and_get_digits", "1 11 3 10000 # " + voice_input + " " + voice_input + " inteliphonebook-other-phoneno .+ 4000", String.Empty);
                                                 log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:1\r\nFlow State:{1}  Times:{2}\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), playEnterOtherPhoneNo));
                                             }
                                         }
@@ -363,7 +400,7 @@ namespace InteliPhoneBookService
                                             {
                                                 user_entered_keys = ""; playEnterOtherPhoneNo = 0; ++playEnterOtherPhoneNo;
                                                 callAssistFlowState = CallAssistFlowState.播放输入其他号码语音;
-                                                eslConnection.Execute("play_and_get_digits", "1 11 3 10000 # enter-other-phoneno.wav enter-other-phoneno.wav inteliphonebook-other-phoneno .+ 4000", String.Empty);
+                                                eslConnection.Execute("play_and_get_digits", "1 11 3 10000 # " + voice_input + " " + voice_input + " inteliphonebook-other-phoneno .+ 4000", String.Empty);
                                                 log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:DTMF   DTMF-Digit:*\r\nFlow State:{1}  Times:{2}\r\n",
                                                                         strUuid,
                                                                         CallAssistFlowState.播放输入其他号码语音.ToString(),
@@ -374,6 +411,7 @@ namespace InteliPhoneBookService
                                 }
 
                                 log.Info(String.Format("Connection closed. UNIQUE-ID:{0}", strUuid));
+                                if ( bCallIsValid == true ) esobProcessor.InsertCallLog(user_id, sip_from_user, sip_to_user, incomming_time);
                                 if (bCanSendSMS)
                                 {
                                     if (String.IsNullOrEmpty(mobile_no))
@@ -382,14 +420,14 @@ namespace InteliPhoneBookService
                                     {
                                         SMSInfo smsInfo = new SMSInfo();
                                         string name = esobProcessor.GetCallerName(sip_from_user);
-                                        
+
                                         smsInfo.mobileno_ = mobile_no;
                                         if (string.IsNullOrEmpty(name)) ;
                                         else
                                             name = "(" + name + ")";
                                         smsInfo.ani_ = sip_from_user + name;
                                         smsInfo.incommingtime_ = incomming_time.ToString();
-                                        
+
                                         if (bCallbackNoIsCurrent)
                                             smsInfo.callbackno_ = sip_from_user;
                                         else
@@ -425,7 +463,3 @@ namespace InteliPhoneBookService
         }
     }
 }
-
-
-//语音文件播放完后,等待一定时间接收客户按键
-//客户按键后,等待一定时间才算超时,此时重新播放语音或者结束
