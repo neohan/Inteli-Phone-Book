@@ -155,6 +155,7 @@ namespace InteliPhoneBookService
                 log.Info("create_uuid:" + originateUuid + "\r\n");
                 clickToDial.Uuid = originateUuid;
                 DateTime clickdial_time = DateTime.Now;
+                bool bRedial = false;
                 eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerIP + ":" + clickToDial.SIPServerPort + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerIP + ":" + clickToDial.SIPServerPort + ")", String.Empty);
                 while (eslConnection.Connected() == ESL_SUCCESS)
                 {
@@ -190,6 +191,21 @@ namespace InteliPhoneBookService
                                 else if (eventBody.Contains(" UNALLOCATED_NUMBER") )
                                 {
                                     StateStr = "ANIINVALID"; clickToDial.CurrentStatus = "ANIINVALID";
+                                }
+                                else if (eventBody.Contains(" RECOVERY_ON_TIMER_EXPIRE"))
+                                {
+                                    if (bRedial == false)
+                                    {
+                                        log.Info(String.Format("task:{0} redial.\r\n", clickToDial.TaskID));
+                                        bRedial = true;
+                                        StateStr = "NONE"; clickToDial.CurrentStatus = "NONE";
+                                        eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@192.168.77.250 &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@192.168.77.250)", String.Empty);
+                                        continue;
+                                    }
+                                    else
+                                    {
+                                        StateStr = "ANIERR"; clickToDial.CurrentStatus = "ANIERR";
+                                    }
                                 }
                                 else
                                 {
