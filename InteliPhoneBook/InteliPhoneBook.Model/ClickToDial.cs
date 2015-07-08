@@ -12,6 +12,10 @@ namespace InteliPhoneBook.Model
         public string SIPGatewayPort;
         public string SIPServerIP;
         public string SIPServerPort;
+        public string SIPServerAddress;
+        public string SIPServerIPBackup;
+        public string SIPServerPortBackup;
+        public string SIPServerAddressBackup;
         public string Ani;
         public string Dnis;
         public string Uuid;

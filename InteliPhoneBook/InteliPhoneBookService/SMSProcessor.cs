@@ -41,15 +41,14 @@ namespace InteliPhoneBookService
                 string sendResult = GetHtmlFromUrl(url);
                 if (sendResult != null)
                 {
-                    log.Info("Send sms response:1");
-                    log.Info("Send sms response:" + sendResult + ".  code:" + GetSMSResponseCodeDesc(sendResult)); log.Info("Send sms response:2");
+                    log.Info("Send sms response:" + sendResult + ".  code:" + GetSMSResponseCodeDesc(sendResult) + "\r\n");
                     if (sendResult.IndexOf("0,") == 0 )
                         result = true;
                 }
                 else
-                    log.Info("Send sms response is null");
+                    log.Info("Send sms response is null\r\n");
             }
-            catch (Exception ex) { result = false; log.Info("Send sms exception:" + ex.Message); }
+            catch (Exception ex) { result = false; log.Info("Send sms exception:" + ex.Message + "\r\n"); }
 
             return result;
         }
@@ -114,7 +113,7 @@ namespace InteliPhoneBookService
             bool bFound = false;
             StringBuilder strSQL = new StringBuilder();
             strSQL.Append("SELECT CompanyCode,LoginId,LoginPwd,SignName,SmsTemplate from SmsGateway WHERE Enabled = 1");
-            log.Info(strSQL.ToString());
+            log.Info(strSQL.ToString() + "\r\n");
             try
             {
                 using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
@@ -135,7 +134,7 @@ namespace InteliPhoneBookService
             }
             catch (Exception e)
             {
-                log.Info("Error occurs during GetSMConfig function.\r\n" + e.Message);
+                log.Info("Error occurs during GetSMConfig function.\r\n" + e.Message + "\r\n");
             }
             return bFound;
         }
@@ -258,7 +257,7 @@ namespace InteliPhoneBookService
                             waitingToSend = smsInfo;
                             InteliPhoneBookService.WaitingToSendSMSList.Remove(smsInfo);
                             logMsg += "\r\nsend now.";
-                            log.Info(logMsg);
+                            log.Info(logMsg + "\r\n");
                             break;//找到了一个可以发送的短信记录就释放对列表的独占
                         }
                     }// end of foreach
@@ -284,11 +283,11 @@ namespace InteliPhoneBookService
                     }
                     else
                         logMsg = "send suc.";
-                    log.Info(logMsg);
+                    log.Info(logMsg + "\r\n");
                     waitingToSend = null;//是否还需要存入数据库有待考虑。??????????
                 }
             }//end of while
-            log.Info("exited");
+            log.Info("exited\r\n");
         }
     }
 }

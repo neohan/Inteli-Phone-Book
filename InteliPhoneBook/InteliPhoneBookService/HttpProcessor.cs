@@ -48,11 +48,30 @@ namespace InteliPhoneBookService
                 server.Stop();
             }
 
-            protected string OnCreate(UriQuery query, string ani, string dnis, string sipgwip, string sipserverip, string sipserverport, string userid)
+            protected string OnCreate(UriQuery query, string ani, string dnis, string sipgwip, string sipserverip, string sipserverport, string sipserveripbackup, string sipserverportbackup, string userid)
             {
                 string taskId = "";
                 lock (InteliPhoneBookService.ClickToDialMap)
                 {
+                    int nCount = 0;
+                    bool bFound;
+                    while (true)
+                    {//删除那些已经存在了很长时间的外拨对象。
+                        bFound = false;
+                        foreach (InteliPhoneBook.Model.ClickToDial deleteClickToDial in InteliPhoneBookService.ClickToDialMap.Values)
+                        {
+                            DateTime dtNowTime = DateTime.Now;
+                            TimeSpan timeDiff = dtNowTime.Subtract(deleteClickToDial.CreateTime);
+                            if (timeDiff.TotalSeconds > 300)
+                            {
+                                bFound = true; log.Info(String.Format("Remove Task:{0}.\r\n", deleteClickToDial.TaskID));
+                                InteliPhoneBookService.ClickToDialMap.Remove(deleteClickToDial.TaskID); break;
+                            }
+                        }
+                        if (bFound == false) break;
+                        ++nCount; if (nCount > 5) break;
+                    }
+
                     DateTime dtNow;
                     int intValue = 100;
                     string dateTimeStr = "";
@@ -68,24 +87,6 @@ namespace InteliPhoneBookService
                         bKeyExist = InteliPhoneBookService.ClickToDialMap.ContainsKey(taskId);
                         Thread.Sleep(1);
                     }
-                    int nCount = 0;
-                    bool bFound;
-                    while ( true )
-                    {//删除那些已经存在了很长时间的外拨对象。
-                        bFound = false;
-                        foreach(InteliPhoneBook.Model.ClickToDial deleteClickToDial in InteliPhoneBookService.ClickToDialMap.Values)
-                        {
-                            DateTime dtNowTime = DateTime.Now;
-                            TimeSpan timeDiff = dtNowTime.Subtract(deleteClickToDial.CreateTime);
-                            if (timeDiff.TotalSeconds > 300)
-                            {
-                                bFound = true; log.Info(String.Format("Remove Task:{0}.\r\n", deleteClickToDial.TaskID)); 
-                                InteliPhoneBookService.ClickToDialMap.Remove(deleteClickToDial.TaskID);break;
-                            }
-                        }
-                        if (bFound == false) break;
-                        ++nCount; if (nCount > 5) break;
-                    }
                     InteliPhoneBook.Model.ClickToDial clickToDial = new InteliPhoneBook.Model.ClickToDial();
                     clickToDial.CreateTime = DateTime.Now;
                     clickToDial.TaskID = taskId;
@@ -94,6 +95,19 @@ namespace InteliPhoneBookService
                     clickToDial.SIPGatewayIP = sipgwip;
                     clickToDial.SIPServerIP = sipserverip;
                     clickToDial.SIPServerPort = sipserverport;
+                    if (String.IsNullOrEmpty(sipserverport))
+                        clickToDial.SIPServerAddress = sipserverip;
+                    else
+                        clickToDial.SIPServerAddress = sipserverip + ":" + sipserverport;
+                    clickToDial.SIPServerIPBackup = sipserveripbackup;
+                    clickToDial.SIPServerPortBackup = sipserverportbackup;
+                    if (String.IsNullOrEmpty(sipserveripbackup) == false)
+                    {
+                        if (String.IsNullOrEmpty(sipserverportbackup))
+                            clickToDial.SIPServerAddressBackup = sipserveripbackup;
+                        else
+                            clickToDial.SIPServerAddressBackup = sipserveripbackup + ":" + sipserverportbackup;
+                    }
                     clickToDial.UserID = userid;
                     InteliPhoneBookService.ClickToDialMap.Add(taskId, clickToDial);
                     //这个taskId返回给页面，后续调用其它查询请求，以此taskId为标识。
@@ -166,7 +180,7 @@ namespace InteliPhoneBookService
                 { Interlocked.Increment(ref InteliPhoneBookService.HttpThreadTerminated); break; }
                 Thread.Sleep(10);
             }
-            log.Info("exited");
+            log.Info("exited\r\n");
         }
     }
 }

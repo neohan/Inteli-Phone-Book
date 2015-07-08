@@ -67,9 +67,9 @@ namespace InteliPhoneBookService
             if (bConnectDBSuc == false)
             {
                 try { FSESLOutboundModeLocalPort = Int32.Parse(ConfigurationManager.AppSettings["FSESLOutboundModeLocalPort"]); }
-                catch (Exception e) { FSESLOutboundModeLocalPort = 8022; } log.Info("FreeSWITCH ESL OutboundMode Local Port:" + FSESLOutboundModeLocalPort);
+                catch (Exception e) { FSESLOutboundModeLocalPort = 8022; } log.Info("FreeSWITCH ESL OutboundMode Local Port:" + FSESLOutboundModeLocalPort + "\r\n");
                 try { PlayWelcomeLimit = Int32.Parse(ConfigurationManager.AppSettings["PlayWelcomeLimit"]); }
-                catch (Exception e) { PlayWelcomeLimit = 3; } log.Info("Play Welcome Limit:" + PlayWelcomeLimit);
+                catch (Exception e) { PlayWelcomeLimit = 3; } log.Info("Play Welcome Limit:" + PlayWelcomeLimit + "\r\n");
             }
         }
 
@@ -83,7 +83,7 @@ namespace InteliPhoneBookService
             bool bFound = false;
             StringBuilder strSQL = new StringBuilder();
             strSQL.Append("select VoiceHello,VoiceHelloMsg,VoiceMessage,VoiceInput,VoiceBye from SipGateway, SipRelay, CallAssistant WHERE SipGateway.ID = SipRelay.GatewayId AND SipRelay.ID = CallAssistant.ID AND SipGateway.IPAddr = \'" + p_fsip + "\' AND SipRelay.IPAddr = \'" + p_fromip + "\' AND CallAssistant.Assistant = \'" + p_sipno + "\'");
-            log.Info(strSQL.ToString());
+            log.Info(strSQL.ToString() + "\r\n");
             try
             {
                 using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
@@ -108,7 +108,7 @@ namespace InteliPhoneBookService
             }
             catch (Exception e)
             {
-                log.Info("Error occurs during CallIsValid function.\r\n" + e.Message);
+                log.Info("Error occurs during CallIsValid function.\r\n" + e.Message + "\r\n");
             }
             return bFound;
         }
@@ -139,7 +139,7 @@ namespace InteliPhoneBookService
             }
             catch (Exception e)
             {
-                log.Info("Error occurs during SMSNotifyEnable function.\r\n" + e.Message);
+                log.Info("Error occurs during SMSNotifyEnable function.\r\n" + e.Message + "\r\n");
             }
             return false;
         }
@@ -203,16 +203,16 @@ namespace InteliPhoneBookService
                  <action application="socket" data="localhost:8022 async full" /> */
                 TcpListener tcpListener;
 
-                log.Info("Listening on port:" + esobProcessor.FSESLOutboundModeLocalPort);
+                log.Info("Listening on port:" + esobProcessor.FSESLOutboundModeLocalPort + "\r\n");
                 try { tcpListener =  new TcpListener(IPAddress.Any, esobProcessor.FSESLOutboundModeLocalPort); }
-                catch ( Exception e){ log.Error("new TcpListener error. do it again later.\r\n" + e.ToString()); Thread.Sleep(5000); continue;}
+                catch (Exception e) { log.Error("new TcpListener error. do it again later.\r\n" + e.ToString() + "\r\n"); Thread.Sleep(5000); continue; }
 
 
                 try
                 {
                     tcpListener.Start();
 
-                    log.Info("OutboundModeAsync, waiting for connections...");
+                    log.Info("OutboundModeAsync, waiting for connections...\r\n");
 
                     while (true)
                     {//这个异步接收客户端连接的底层多线程模型是怎样的，需要详细考察下。
@@ -221,7 +221,7 @@ namespace InteliPhoneBookService
                             TcpListener tcpListened = (TcpListener)asyncCallback.AsyncState;
 
                             Socket sckClient = tcpListened.EndAcceptSocket(asyncCallback);
-                            log.Info("Set ManualResetEvent object."); clientConnected.Set();
+                            log.Info("Set ManualResetEvent object.\r\n"); clientConnected.Set();
 
                             //Initializes a new instance of ESLconnection, and connects to the host $host on the port $port, and supplies $password to freeswitch
                             ESLconnection eslConnection = new ESLconnection(sckClient.Handle.ToInt32());
@@ -235,7 +235,7 @@ namespace InteliPhoneBookService
                             DateTime incomming_time = DateTime.Now;
                             Int32 playWelcomeCount = 0, playSMSChoiceCount = 0, playEnterOtherPhoneNo = 0;
                             CallAssistFlowState callAssistFlowState = CallAssistFlowState.空闲;
-                            bool bCanSendSMS = false, bCallbackNoIsCurrent = false, bCallIsValid = true; log.Info(eslEvent.Serialize(String.Empty));
+                            bool bCanSendSMS = false, bCallbackNoIsCurrent = false, bCallIsValid = true; log.Info(eslEvent.Serialize(String.Empty) + "\r\n");
                             sip_req_user = eslEvent.GetHeader("Caller-Destination-Number", -1);
                             if (esobProcessor.CallIsValid(sip_from_host, fs_host, sip_req_user, out voice_welcome_no, out voice_welcome, out voice_callbak, out voice_input, out voice_bye) == false)
                             { eslConnection.Disconnect(); bCallIsValid = false; }
@@ -250,7 +250,7 @@ namespace InteliPhoneBookService
                                 eslConnection.Execute("answer", String.Empty, String.Empty);
                                 while (eslConnection.Connected() == ESL_SUCCESS)
                                 {
-                                    eslEvent = eslConnection.RecvEventTimed(10); if (eslEvent == null) { continue; } log.Info(eslEvent.Serialize(String.Empty));
+                                    eslEvent = eslConnection.RecvEventTimed(10); if (eslEvent == null) { continue; } log.Info(eslEvent.Serialize(String.Empty) + "\r\n");
                                     strUuid = eslEvent.GetHeader("UNIQUE-ID", -1);
                                     string event_name = eslEvent.GetHeader("Event-Name", -1);
                                     string appname = eslEvent.GetHeader("Application", -1);
@@ -292,7 +292,7 @@ namespace InteliPhoneBookService
                                                 callAssistFlowState = CallAssistFlowState.播放再见语音;
                                                 user_entered_keys = eslEvent.GetHeader("variable_inteliphonebook-other-phoneno", -1);
                                                 log.Info(String.Format("UNIQUE-ID:{0}  Event-Name:CHANNEL_EXECUTE_COMPLETE   Application:play_and_get_digits\r\nFlow State:{1}  Digits:{2}  Go to the final step.\r\n", strUuid, CallAssistFlowState.播放输入其他号码语音.ToString(), user_entered_keys));
-                                                log.Info(eslEvent.Serialize(String.Empty));
+                                                log.Info(eslEvent.Serialize(String.Empty) + "\r\n");
                                                 eslConnection.Execute("playback", voice_bye, String.Empty);
                                                 bCanSendSMS = true;
                                                 bCallbackNoIsCurrent = false;
@@ -410,12 +410,12 @@ namespace InteliPhoneBookService
                                     }
                                 }
 
-                                log.Info(String.Format("Connection closed. UNIQUE-ID:{0}", strUuid));
+                                log.Info(String.Format("Connection closed. UNIQUE-ID:{0}\r\n", strUuid));
                                 if ( bCallIsValid == true ) esobProcessor.InsertCallLog(user_id, sip_from_user, sip_to_user, incomming_time);
                                 if (bCanSendSMS)
                                 {
                                     if (String.IsNullOrEmpty(mobile_no))
-                                        log.Info(String.Format("UNIQUE-ID:{0}  Mobile no is null,cannot create sm object.", strUuid));
+                                        log.Info(String.Format("UNIQUE-ID:{0}  Mobile no is null,cannot create sm object.\r\n", strUuid));
                                     else
                                     {
                                         SMSInfo smsInfo = new SMSInfo();
@@ -445,7 +445,7 @@ namespace InteliPhoneBookService
                             if (InteliPhoneBookService.ServiceIsTerminating == 1) break;
                         }
                         if (InteliPhoneBookService.ServiceIsTerminating == 1) break;
-                        log.Info("ManualResetEvent object is reset, Begin Accept Socket again.");
+                        log.Info("ManualResetEvent object is reset, Begin Accept Socket again.\r\n");
                         clientConnected.Reset();
                         Thread.Sleep(50);
                     }
@@ -459,7 +459,7 @@ namespace InteliPhoneBookService
                     tcpListener.Stop();
                 }
             }
-            log.Info("exited");
+            log.Info("exited\r\n");
         }
     }
 }

@@ -44,13 +44,13 @@ namespace InteliPhoneBookService
             if (bConnectDBSuc == false)
             {
                 try { FSESLInboundModeServerPort = Int32.Parse(ConfigurationManager.AppSettings["FSESLInboundModeServerPort"]); }
-                catch (Exception e) { FSESLInboundModeServerPort = 8021; } log.Info("FreeSWITCH ESL InboundMode Server Port:" + FSESLInboundModeServerPort);
+                catch (Exception e) { FSESLInboundModeServerPort = 8021; } log.Info("FreeSWITCH ESL InboundMode Server Port:" + FSESLInboundModeServerPort + "\r\n");
                 try { FSESLInboundModeReconnectTimes = Int32.Parse(ConfigurationManager.AppSettings["FSESLInboundModeReconnectTimes"]); }
-                catch (Exception e) { FSESLInboundModeReconnectTimes = 3; } log.Info("FreeSWITCH ESL InboundMode Reconnect Limit:" + FSESLInboundModeReconnectTimes);
+                catch (Exception e) { FSESLInboundModeReconnectTimes = 3; } log.Info("FreeSWITCH ESL InboundMode Reconnect Limit:" + FSESLInboundModeReconnectTimes + "\r\n");
                 try { FSESLInboundModeRecreateUUIDTimes = Int32.Parse(ConfigurationManager.AppSettings["FSESLInboundModeRecreateUUIDTimes"]); }
-                catch (Exception e) { FSESLInboundModeRecreateUUIDTimes = 3; } log.Info("FreeSWITCH ESL InboundMode Re-create UUID Limit:" + FSESLInboundModeRecreateUUIDTimes);
+                catch (Exception e) { FSESLInboundModeRecreateUUIDTimes = 3; } log.Info("FreeSWITCH ESL InboundMode Re-create UUID Limit:" + FSESLInboundModeRecreateUUIDTimes + "\r\n");
                 try {FSESLInboundModeAniAnsTimeout = Int32.Parse(ConfigurationManager.AppSettings["FSESLInboundModeAniAnsTimeout"]);}
-                catch (Exception e) { FSESLInboundModeAniAnsTimeout = 60; } log.Info("FreeSWITCH ESL InboundMode Ani Answer Timeout(s):" + FSESLInboundModeAniAnsTimeout);
+                catch (Exception e) { FSESLInboundModeAniAnsTimeout = 60; } log.Info("FreeSWITCH ESL InboundMode Ani Answer Timeout(s):" + FSESLInboundModeAniAnsTimeout + "\r\n");
             }
         }
 
@@ -73,7 +73,7 @@ namespace InteliPhoneBookService
             }
             catch (Exception e)
             {
-                log.Info("Error occurs during inserting calllog.\r\n" + e.Message);
+                log.Info("Error occurs during inserting calllog.\r\n" + e.Message + "\r\n");
             }
 
             try
@@ -87,7 +87,7 @@ namespace InteliPhoneBookService
             }
             catch (Exception e)
             {
-                log.Info("Error occurs during updating calltimes field of siprelay table.\r\n" + e.Message);
+                log.Info("Error occurs during updating calltimes field of siprelay table.\r\n" + e.Message + "\r\n");
             }
         }
 
@@ -102,7 +102,7 @@ namespace InteliPhoneBookService
                 { Interlocked.Increment(ref InteliPhoneBookService.FSIBThreadTerminated); break; }
                 Thread.Sleep(1000);
             }
-            log.Info("exited");
+            log.Info("exited\r\n");
         }
 
         static public void ClickToDialDoWork(Object stateInfo)
@@ -156,7 +156,7 @@ namespace InteliPhoneBookService
                 clickToDial.Uuid = originateUuid;
                 DateTime clickdial_time = DateTime.Now;
                 bool bRedial = false;
-                eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerIP + ":" + clickToDial.SIPServerPort + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerIP + ":" + clickToDial.SIPServerPort + ")", String.Empty);
+                eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
                 while (eslConnection.Connected() == ESL_SUCCESS)
                 {
                     if (InteliPhoneBookService.ServiceIsTerminating == 1) break;
@@ -194,12 +194,12 @@ namespace InteliPhoneBookService
                                 }
                                 else if (eventBody.Contains(" RECOVERY_ON_TIMER_EXPIRE"))
                                 {
-                                    if (bRedial == false)
+                                    if (bRedial == false && String.IsNullOrEmpty(clickToDial.SIPServerAddressBackup) == false)
                                     {
                                         log.Info(String.Format("task:{0} redial.\r\n", clickToDial.TaskID));
                                         bRedial = true;
                                         StateStr = "NONE"; clickToDial.CurrentStatus = "NONE";
-                                        eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@192.168.77.250 &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@192.168.77.250)", String.Empty);
+                                        eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddressBackup + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerAddressBackup + ")", String.Empty);
                                         continue;
                                     }
                                     else
