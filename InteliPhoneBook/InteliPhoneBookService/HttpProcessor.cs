@@ -53,7 +53,6 @@ namespace InteliPhoneBookService
                 string taskId = "";
                 lock (InteliPhoneBookService.ClickToDialMap)
                 {
-                    int nCount = 0;
                     bool bFound;
                     while (true)
                     {//删除那些已经存在了很长时间的外拨对象。
@@ -69,7 +68,14 @@ namespace InteliPhoneBookService
                             }
                         }
                         if (bFound == false) break;
-                        ++nCount; if (nCount > 5) break;
+                    }
+                    foreach (InteliPhoneBook.Model.ClickToDial checkClickToDial in InteliPhoneBookService.ClickToDialMap.Values)
+                    {//检查是否存在针对同一个分机的外拨请求，如果存在则不生成此次外拨请求。
+                        if (checkClickToDial.Ani == ani && checkClickToDial.SIPGatewayIP == sipgwip && checkClickToDial.SIPServerIP == sipserverip)
+                        {
+                            log.Info(String.Format("The same ani exist(TaskID:{0}), cannot create ClickToDial obj.\r\n", checkClickToDial.TaskID));
+                            return "BUSY";
+                        }
                     }
 
                     DateTime dtNow;
