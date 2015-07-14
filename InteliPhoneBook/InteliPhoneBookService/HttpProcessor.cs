@@ -59,9 +59,12 @@ namespace InteliPhoneBookService
                         bFound = false;
                         foreach (InteliPhoneBook.Model.ClickToDial deleteClickToDial in InteliPhoneBookService.ClickToDialMap.Values)
                         {
-                            DateTime dtNowTime = DateTime.Now;
-                            TimeSpan timeDiff = dtNowTime.Subtract(deleteClickToDial.CreateTime);
-                            if (timeDiff.TotalSeconds > 300)
+                            if (deleteClickToDial.CurrentStatus == "ANIBUSY" || deleteClickToDial.CurrentStatus == "ANINOANS" ||
+                                deleteClickToDial.CurrentStatus == "ANIERR" || deleteClickToDial.CurrentStatus == "DNISBUSY" ||
+                                deleteClickToDial.CurrentStatus == "DNISNOANS" || deleteClickToDial.CurrentStatus == "DNISNORESP" ||
+                                deleteClickToDial.CurrentStatus == "DNISINVALID" || deleteClickToDial.CurrentStatus == "DNISTEMPFAIL" ||
+                                deleteClickToDial.CurrentStatus == "DNISFATAL" || deleteClickToDial.CurrentStatus == "COMPLETE" ||
+                                deleteClickToDial.CurrentStatus == "DNISERR" || deleteClickToDial.CurrentStatus == "EXCEEDLIMIT")
                             {
                                 bFound = true; log.Info(String.Format("Remove Task:{0}.\r\n", deleteClickToDial.TaskID));
                                 InteliPhoneBookService.ClickToDialMap.Remove(deleteClickToDial.TaskID); break;

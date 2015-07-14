@@ -23,5 +23,6 @@ namespace InteliPhoneBook.Model
 
         public DateTime CreateTime;                 //记录创建时间，是为了在超时时长后丢弃此实例。
         public string CurrentStatus;
+        public bool bFinished;
     }
 }
