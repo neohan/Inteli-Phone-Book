@@ -42,10 +42,15 @@ namespace InteliPhoneBookService
             FSESOBProcessor = new FSESOBProcessor();
             FSESIBProcessor = new FSESIBProcessor();
             HttpProcessor = new HttpProcessor();
-            ThreadPool.QueueUserWorkItem(new WaitCallback(SMSProcessor.DoWork), SMSProcessor);
-            ThreadPool.QueueUserWorkItem(new WaitCallback(FSESOBProcessor.DoWork), FSESOBProcessor);
-            ThreadPool.QueueUserWorkItem(new WaitCallback(FSESIBProcessor.DoWork), FSESIBProcessor);
-            ThreadPool.QueueUserWorkItem(new WaitCallback(HttpProcessor.DoWork), HttpProcessor);
+
+            Thread Thread_sms = new Thread(new ParameterizedThreadStart(SMSProcessor.DoWork));
+            Thread_sms.Start(SMSProcessor);
+            Thread Thread_ob = new Thread(new ParameterizedThreadStart(FSESOBProcessor.DoWork));
+            Thread_ob.Start(FSESOBProcessor);
+            Thread Thread_ib = new Thread(new ParameterizedThreadStart(FSESIBProcessor.DoWork));
+            Thread_ib.Start(FSESIBProcessor);
+            Thread Thread_http = new Thread(new ParameterizedThreadStart(HttpProcessor.DoWork));
+            Thread_http.Start(HttpProcessor);
         }
 
         protected override void OnStop()
