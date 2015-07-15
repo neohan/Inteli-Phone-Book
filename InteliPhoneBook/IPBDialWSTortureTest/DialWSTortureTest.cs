@@ -39,12 +39,14 @@ namespace IPBDialWSTortureTest
         public int TotalSend = 0;
         public int TotalConnectWSServer = 0;
         public int TotalCannotConnectWSServer = 0;
+        public int TotalCannotConnectFS = 0;
         public int TotalConnectWSServerPredict = 0;
         public int TotalCannotConnectWSServerPredict = 0;
+        public int TotalCannotConnectFSPredict = 0;
         public string[] ANI = { "4001", "4002", "4003", "4003", "4004", "4005", "4006", "4007", "4008", "4009", "4010", "4011", "4012" };
         public string[] USERID = { "xlksd-4001-8792993-klsdjfl", "iepoolc-4002-8909923", "xmnvck-4003-545290i", "aksdlc-4003-87993", "zmkcoie-4004-873,md", "mlkcje-4005-8iiemc8", "akkm-4006-87793", "mkueyt-4007-9773uue", "nxcjjsu-4008-7iuekmd", "cmjcie-4009-8i3ijmnd", "mcjed-4010-883idm", "zmckjd-4011-83kedmmd", "qaewre-4012-1qdd" };
         public string[] DNIS = { "4002", "4003", "4003", "4004", "4005", "4006", "4007", "4008", "4009", "4010", "4011", "4012", "4013", "4014" };
-        public string[] WSIP = { "192.168.77.168", "192.168.77.169" };
+        public string[] WSIP = { "192.168.77.169" };
         public string[] SipGWIP = { "192.168.77.167", "192.168.77.168", "192.168.77.169" };
         public string[] SipSVRIP = { "192.168.77.250", "192.168.77.251", "192.168.77.252", "192.168.77.253" };
         public string[] SipSVRPort = { "5058", "5059", "5060", "5061", "5062" };
@@ -158,23 +160,28 @@ namespace IPBDialWSTortureTest
             url = String.Format(url, WSIPStr, ANIStr, DNISStr, SipGWIPStr, SipSVRIPStr, SipSVRPortStr, SipSVRIPBackupStr, SipSVRPortBackupStr, USERIDStr);
             if (WSIPStr == "192.168.77.169") ++TotalConnectWSServerPredict;
             if (WSIPStr == "192.168.77.168") ++TotalCannotConnectWSServerPredict;
-            /*if (bFSUp)
-            {
-                if ( SipGWIPStr == "192.168.77.168" )
-            }
-            else
-            {
-            }*/
 
             try
             {
                 string sendResult = GetHtmlFromUrl(url);
                 if (sendResult != null)
                 {
-                    log.Info("\r\n" + url + "\r\n" + sendResult + "\r\n");
+                    log.Info("Thread ID:" + ID + "\r\n" + url + "\r\n" + sendResult + "\r\n");
                     if (sendResult.IndexOf("BUSY") >= 0) { }
                     else
                     {
+                        if (bFSUp)
+                        {
+                            if (SipGWIPStr == "192.168.77.168")
+                                ;
+                            else
+                                ++TotalCannotConnectFSPredict;
+                        }
+                        else
+                        {
+                            ++TotalCannotConnectFSPredict;
+                        }
+
                         int pos = sendResult.IndexOf("\r\n"); if (pos >= 0) sendResult = sendResult.Remove(pos);
                         ClickToDial addClickToDial = new ClickToDial();
                         addClickToDial.TaskID = sendResult;
@@ -189,7 +196,7 @@ namespace IPBDialWSTortureTest
             }
             catch (Exception ex)
             {
-                log.Info("\r\n" + url + "\r\nexception\r\n" + ex.Message + "\r\n");
+                log.Info("Thread ID:" + ID + "\r\n" + url + "\r\nexception\r\n" + ex.Message + "\r\n");
                 result = false;
             }
             return result;
@@ -212,12 +219,16 @@ namespace IPBDialWSTortureTest
             try
             {
                 string sendResult = GetHtmlFromUrl(url);
-                log.Info("\r\n" + url + "\r\n" + sendResult + "\r\n");
+                log.Info("Thread ID:" + ID + "\r\n" + url + "\r\n" + sendResult + "\r\n");
                 if (sendResult != null)
                 {
                     if ( (sendResult.IndexOf("EXCEEDLIMIT") >= 0) || (sendResult.IndexOf("NOTFOUND") >= 0) )
                     {
                         taskIdList.Add(p_checkClickToDial.TaskID);
+                    }
+                    if (sendResult.IndexOf("EXCEEDLIMIT") >= 0)
+                    {
+                        ++TotalCannotConnectFS;
                     }
                     result = true;
                 }
@@ -225,7 +236,7 @@ namespace IPBDialWSTortureTest
             }
             catch (Exception ex)
             {
-                log.Info("\r\n" + url + "\r\nexception\r\n" + ex.Message + "\r\n");
+                log.Info("Thread ID:" + ID + "\r\n" + url + "\r\nexception\r\n" + ex.Message + "\r\n");
                 result = false;
             }
             return result;
@@ -253,7 +264,7 @@ namespace IPBDialWSTortureTest
             }
             catch (Exception ex)
             {
-                log.Info("\r\n" + url + "\r\nGetHtmlFromUrl exception\r\n" + ex.Message + "\r\n");
+                log.Info("Thread ID:" + ID + "\r\n" + url + "\r\nGetHtmlFromUrl exception\r\n" + ex.Message + "\r\n");
                 strRet = null;
             }
             return strRet;
@@ -269,24 +280,53 @@ namespace IPBDialWSTortureTest
             while (true)
             {
                 if (IPBDialWSTortureTestForm.ServiceIsTerminating == 1)
-                { Interlocked.Increment(ref IPBDialWSTortureTestForm.WSThreadTerminated); break; }
+                {
+                    Interlocked.Increment(ref IPBDialWSTortureTestForm.WSThreadTerminated);
+                    while (thdObj.taskList.Count() > 0)
+                    {
+                        thdObj.taskIdList.Clear();
+                        foreach (ClickToDial checkClickToDial in thdObj.taskList.Values)
+                        {
+                            thdObj.GetClickToDialStatus(checkClickToDial);
+                        }
+                        foreach (string taskid in thdObj.taskIdList)
+                        {
+                            thdObj.taskList.Remove(taskid);
+                            log.Info(String.Format("Exiting...   Thread ID:{0}.  Remove task:{1}.\r\n", thdObj.ID, taskid));
+                        }
+                        log.Info(String.Format("Exiting...   Thread ID:{0}.  task list:{1}.\r\n", thdObj.ID, thdObj.taskList.Count()));
+
+                        if (thdObj.taskList.Count() > 0)
+                        {
+                            foreach (string keyvalue in thdObj.taskList.Keys)
+                            {
+                                log.Info(String.Format("Exiting...   Thread ID:{0}.  task id:{1}.\r\n", thdObj.ID, keyvalue));
+                            }
+                        }
+                        Thread.Sleep(10);
+                    }
+                    break;
+                }
                 ++thdObj.TotalSend;
                 thdObj.MakeClickToDial();
 
                 thdObj.taskIdList.Clear();
                 foreach (ClickToDial checkClickToDial in thdObj.taskList.Values)
                 {
-                    thdObj.GetClickToDialStatus(checkClickToDial);
+                    thdObj.GetClickToDialStatus(checkClickToDial); Thread.Sleep(100);
                 }
                 foreach (string taskid in thdObj.taskIdList)
                 {
+                    Thread.Sleep(100);
                     thdObj.taskList.Remove(taskid);
                     log.Info(String.Format("Thread ID:{0}.  Remove task:{1}.\r\n", thdObj.ID, taskid));
                 }
-                Thread.Sleep(10);
+                Thread.Sleep(100);
             }
             log.Info(String.Format("Thread ID:{0}.  Predict.  TotalSend:{1}.  ConnectWSServer Suc:{2}.  ConnectWSServer Fail:{3}.\r\n", thdObj.ID, thdObj.TotalSend, thdObj.TotalConnectWSServerPredict, thdObj.TotalCannotConnectWSServerPredict));
+            log.Info(String.Format("Thread ID:{0}.  Predict.  TotalCannotConnectFS:{1}.\r\n", thdObj.ID, thdObj.TotalCannotConnectFSPredict));
             log.Info(String.Format("Thread ID:{0}.  TotalSend:{1}.  ConnectWSServer Suc:{2}.  ConnectWSServer Fail:{3}.\r\n", thdObj.ID, thdObj.TotalSend, thdObj.TotalConnectWSServer, thdObj.TotalCannotConnectWSServer));
+            log.Info(String.Format("Thread ID:{0}.  TotalCannotConnectFS:{1}.\r\n", thdObj.ID, thdObj.TotalCannotConnectFS));
             log.Info(String.Format("Thread ID:{0}.  exited\r\n", thdObj.ID));
         }
     }

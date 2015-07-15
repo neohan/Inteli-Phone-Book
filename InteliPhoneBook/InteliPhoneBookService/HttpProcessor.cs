@@ -59,12 +59,12 @@ namespace InteliPhoneBookService
                         bFound = false;
                         foreach (InteliPhoneBook.Model.ClickToDial deleteClickToDial in InteliPhoneBookService.ClickToDialMap.Values)
                         {
-                            if (deleteClickToDial.CurrentStatus == "ANIBUSY" || deleteClickToDial.CurrentStatus == "ANINOANS" ||
-                                deleteClickToDial.CurrentStatus == "ANIERR" || deleteClickToDial.CurrentStatus == "DNISBUSY" ||
-                                deleteClickToDial.CurrentStatus == "DNISNOANS" || deleteClickToDial.CurrentStatus == "DNISNORESP" ||
-                                deleteClickToDial.CurrentStatus == "DNISINVALID" || deleteClickToDial.CurrentStatus == "DNISTEMPFAIL" ||
-                                deleteClickToDial.CurrentStatus == "DNISFATAL" || deleteClickToDial.CurrentStatus == "COMPLETE" ||
-                                deleteClickToDial.CurrentStatus == "DNISERR" || deleteClickToDial.CurrentStatus == "EXCEEDLIMIT")
+                            if (deleteClickToDial.ReturnStatus == "ANIBUSY" || deleteClickToDial.ReturnStatus == "ANINOANS" ||
+                                deleteClickToDial.ReturnStatus == "ANIERR" || deleteClickToDial.ReturnStatus == "DNISBUSY" ||
+                                deleteClickToDial.ReturnStatus == "DNISNOANS" || deleteClickToDial.ReturnStatus == "DNISNORESP" ||
+                                deleteClickToDial.ReturnStatus == "DNISINVALID" || deleteClickToDial.ReturnStatus == "DNISTEMPFAIL" ||
+                                deleteClickToDial.ReturnStatus == "DNISFATAL" || deleteClickToDial.ReturnStatus == "COMPLETE" ||
+                                deleteClickToDial.ReturnStatus == "DNISERR" || deleteClickToDial.ReturnStatus == "EXCEEDLIMIT")
                             {
                                 bFound = true; log.Info(String.Format("Remove Task:{0}.\r\n", deleteClickToDial.TaskID));
                                 InteliPhoneBookService.ClickToDialMap.Remove(deleteClickToDial.TaskID); break;
@@ -74,10 +74,18 @@ namespace InteliPhoneBookService
                     }
                     foreach (InteliPhoneBook.Model.ClickToDial checkClickToDial in InteliPhoneBookService.ClickToDialMap.Values)
                     {//检查是否存在针对同一个分机的外拨请求，如果存在则不生成此次外拨请求。
-                        if (checkClickToDial.Ani == ani && checkClickToDial.SIPGatewayIP == sipgwip && checkClickToDial.SIPServerIP == sipserverip)
+                        if (checkClickToDial.CurrentStatus != "ANIBUSY" && checkClickToDial.CurrentStatus != "ANINOANS" &&
+                            checkClickToDial.CurrentStatus != "ANIERR" && checkClickToDial.CurrentStatus != "DNISBUSY" &&
+                            checkClickToDial.CurrentStatus != "DNISNOANS" && checkClickToDial.CurrentStatus != "DNISNORESP" &&
+                            checkClickToDial.CurrentStatus != "DNISINVALID" && checkClickToDial.CurrentStatus != "DNISTEMPFAIL" &&
+                            checkClickToDial.CurrentStatus != "DNISFATAL" && checkClickToDial.CurrentStatus != "COMPLETE" &&
+                            checkClickToDial.CurrentStatus != "DNISERR" && checkClickToDial.CurrentStatus != "EXCEEDLIMIT")
                         {
-                            log.Info(String.Format("The same ani exist(TaskID:{0}), cannot create ClickToDial obj.\r\n", checkClickToDial.TaskID));
-                            return "BUSY";
+                            if (checkClickToDial.Ani == ani && checkClickToDial.SIPGatewayIP == sipgwip && checkClickToDial.SIPServerIP == sipserverip)
+                            {
+                                log.Info(String.Format("The same ani exist(TaskID:{0}), cannot create ClickToDial obj.\r\n", checkClickToDial.TaskID));
+                                return "BUSY";
+                            }
                         }
                     }
 
@@ -134,6 +142,7 @@ namespace InteliPhoneBookService
                     {
                         InteliPhoneBook.Model.ClickToDial clickToDial = null;
                         InteliPhoneBookService.ClickToDialMap.TryGetValue(paramString, out clickToDial);
+                        clickToDial.ReturnStatus = clickToDial.CurrentStatus;
                         return clickToDial.CurrentStatus;
                     }
                     else
