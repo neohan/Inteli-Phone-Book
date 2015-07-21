@@ -20,12 +20,14 @@ namespace InteliPhoneBookService
         static public int FSIBThreadTerminated = 0;
         static public int FSOBThreadTerminated = 0;
         static public int HttpThreadTerminated = 0;
+        static public int LicThreadTerminated = 0;
         #endregion
 
         private SMSProcessor SMSProcessor;
         private FSESOBProcessor FSESOBProcessor;
         private FSESIBProcessor FSESIBProcessor;
         private HttpProcessor HttpProcessor;
+        private LicProcessor LicProcessor;
 
         static public List<SMSInfo> WaitingToSendSMSList = new List<SMSInfo>();
         static public Dictionary<string, ClickToDial> ClickToDialMap = new Dictionary<string, ClickToDial>();
@@ -42,6 +44,7 @@ namespace InteliPhoneBookService
             FSESOBProcessor = new FSESOBProcessor();
             FSESIBProcessor = new FSESIBProcessor();
             HttpProcessor = new HttpProcessor();
+            LicProcessor = new LicProcessor();
 
             Thread Thread_sms = new Thread(new ParameterizedThreadStart(SMSProcessor.DoWork));
             Thread_sms.Start(SMSProcessor);
@@ -51,6 +54,8 @@ namespace InteliPhoneBookService
             Thread_ib.Start(FSESIBProcessor);
             Thread Thread_http = new Thread(new ParameterizedThreadStart(HttpProcessor.DoWork));
             Thread_http.Start(HttpProcessor);
+            Thread Thread_lic = new Thread(new ParameterizedThreadStart(LicProcessor.DoWork));
+            Thread_lic.Start(LicProcessor);
         }
 
         protected override void OnStop()
