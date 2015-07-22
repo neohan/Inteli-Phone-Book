@@ -242,6 +242,16 @@ namespace InteliPhoneBookService
                             { eslConnection.Disconnect(); bCallIsValid = false; }
                             else
                             {
+                                if (String.IsNullOrEmpty(voice_welcome_no) || String.IsNullOrEmpty(voice_welcome) ||
+                                        String.IsNullOrEmpty(voice_callbak) || String.IsNullOrEmpty(voice_input) ||
+                                        String.IsNullOrEmpty(voice_bye))
+                                {
+                                    voice_welcome_no = "ipb_welcome_no.wav";
+                                    voice_welcome = "ipb_welcome.wav";
+                                    voice_callbak = "ipb_callback.wav";
+                                    voice_input = "ipb_input.wav";
+                                    voice_bye = "ipb_bye.wav";
+                                }
                                 //log.Info(eslEvent.Serialize(String.Empty));
 
                                 eslConnection.SendRecv("myevents");
