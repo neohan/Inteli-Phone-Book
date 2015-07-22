@@ -47,7 +47,7 @@ namespace InteliPhoneBookService
         public static ManualResetEvent clientConnected = new ManualResetEvent(false);
         public enum CallAssistFlowState { 空闲=1, 无短信播放语音, 播放开始语音, 播放选择通知号码语音, 播放输入其他号码语音, 播放再见语音 }
         private const string INSERT_TABLE = " CallLog ";
-        private const string INSERT_PARAMS = " (UserID,Ani,Dnis,StartDateTime,SucFlag,CallType) values(@userid,@ani,@dnis,@startdatetime,0,2)  ";
+        private const string INSERT_PARAMS = " (UserID,Ani,Dnis,StartDateTime,EndDateTime,SucFlag,CallType) values(@userid,@ani,@dnis,@startdatetime,@enddatetime,0,2)  ";
 
         #region configuration data
         public int FSESLOutboundModeLocalPort = 0;              //fs outbound mode local port
@@ -179,7 +179,8 @@ namespace InteliPhoneBookService
                 new SqlParameter("@userid", p_userid),
                 new SqlParameter("@ani", p_ani),
                 new SqlParameter("@dnis", p_dnis),
-                new SqlParameter("@startdatetime", p_time.ToString())};
+                new SqlParameter("@startdatetime", p_time.ToString()),
+                new SqlParameter("@enddatetime", p_time.ToString())};
 
                 SqlHelper.ExecuteNonQuery(strSQL.ToString(), out result, parms);
             }
