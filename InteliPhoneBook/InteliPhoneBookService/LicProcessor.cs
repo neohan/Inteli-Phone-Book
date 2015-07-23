@@ -119,21 +119,51 @@ namespace InteliPhoneBookService
             XmlDocument xdoc = new XmlDocument();
             xdoc.Load("C:\\src\\Inteli-Phone-Book\\InteliPhoneBook\\InteliPhoneBookService\\bin\\Debug\\lic.xml");
 
+            //verification
             string endpoint = xdoc.DocumentElement["endpoint"].InnerText;
             AddKey = DecryptDES_ProjectInsideKey(endpoint, "35405717");
-            /*xdoc.DocumentElement["type"].InnerText;
-            xdoc.DocumentElement["createtime"].InnerText;
-            xdoc.DocumentElement["endtime"].InnerText;
-            xdoc.DocumentElement["guid"].InnerText;*/
+
+            SHA384Managed shaM = new SHA384Managed();
+            byte[] data;
+
+            MemoryStream ms = new MemoryStream();
+            BinaryWriter bw = new BinaryWriter(ms);
+            bw.Write(12);
+            bw.Write(xdoc.DocumentElement["level"].InnerText);
+            bw.Write(xdoc.DocumentElement["type"].InnerText);
+            bw.Write(xdoc.DocumentElement["endpoint"].InnerText);
+            bw.Write(xdoc.DocumentElement["createtime"].InnerText);
+            bw.Write(xdoc.DocumentElement["endtime"].InnerText);
+            bw.Write(xdoc.DocumentElement["guid"].InnerText);
             XmlElement elem = (XmlElement)xdoc.DocumentElement["features"].FirstChild;
             int nFeatures = xdoc.DocumentElement["features"].GetElementsByTagName("feature").Count;
             for (int i = 0; i < nFeatures; i++)
             {
+                bw.Write(elem.Attributes["name"].Value); bw.Write(elem.Attributes["value"].Value);
                 if (elem.Attributes["name"].Value == "versiontype")
                     versiontypestr = DecryptDES(elem.Attributes["value"].Value, "35405717");
                 elem = (XmlElement)elem.NextSibling;
             }
-            //xdoc.DocumentElement["signature"].InnerText;
+            int nLen = (int)ms.Position + 1;
+            bw.Close();
+            ms.Close();
+            data = ms.GetBuffer();
+
+            data = shaM.ComputeHash(data, 0, nLen);
+
+            string result = "";
+            foreach (byte dbyte in data)
+            {
+                result += dbyte.ToString("X2");
+            }
+            string signature = xdoc.DocumentElement["signature"].InnerText;
+            if (signature != result)
+            {
+                p_lictypedesc = "0";
+                log.Info(String.Format("invalid lic.signature is wrong.\r\nresult   :{0}\r\nsignature:{1}", result, signature));
+                return;
+            }
+
 
             if (versiontypestr == "basic")//SJ966WcqFE8=
             {
@@ -153,7 +183,7 @@ namespace InteliPhoneBookService
             else
             {
                 p_lictypedesc = "0";
-                log.Info("evaluation lic mode." + versiontypestr);
+                log.Info("invalid lic." + versiontypestr);
             }
         }
 
