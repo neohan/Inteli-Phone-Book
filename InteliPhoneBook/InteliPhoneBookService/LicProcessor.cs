@@ -8,6 +8,7 @@ using System.Data.SqlClient;
 using System.Xml;
 using System.IO;
 using System.Security.Cryptography;
+using System.Windows.Forms;
 
 namespace InteliPhoneBookService
 {
@@ -112,55 +113,77 @@ namespace InteliPhoneBookService
             return bFound;
         }
 
-        void LoadLicFile(out string p_lictypedesc)
+        void LoadLicFile(out string p_lictypedesc, out string p_siptrunk)
         {
-            p_lictypedesc = "3";
+            p_lictypedesc = "0"; p_siptrunk = "1";
             string versiontypestr = "";
             XmlDocument xdoc = new XmlDocument();
-            xdoc.Load("C:\\src\\Inteli-Phone-Book\\InteliPhoneBook\\InteliPhoneBookService\\bin\\Debug\\lic.xml");
+            try
+            {
+                int pos = Application.ExecutablePath.LastIndexOf("\\");
+                string path = Application.ExecutablePath.Substring(0, pos);
+                xdoc.Load(path + "\\lic.xml");
+            }
+            catch (Exception ex)
+            {
+                p_lictypedesc = "3";
+                log.Info(String.Format("invalid lic.\r\n{0}", ex.Message));
+                return;
+            }
 
             //verification
-            string endpoint = xdoc.DocumentElement["endpoint"].InnerText;
-            AddKey = DecryptDES_ProjectInsideKey(endpoint, "35405717");
-
-            SHA384Managed shaM = new SHA384Managed();
-            byte[] data;
-
-            MemoryStream ms = new MemoryStream();
-            BinaryWriter bw = new BinaryWriter(ms);
-            bw.Write(12);
-            bw.Write(xdoc.DocumentElement["level"].InnerText);
-            bw.Write(xdoc.DocumentElement["type"].InnerText);
-            bw.Write(xdoc.DocumentElement["endpoint"].InnerText);
-            bw.Write(xdoc.DocumentElement["createtime"].InnerText);
-            bw.Write(xdoc.DocumentElement["endtime"].InnerText);
-            bw.Write(xdoc.DocumentElement["guid"].InnerText);
-            XmlElement elem = (XmlElement)xdoc.DocumentElement["features"].FirstChild;
-            int nFeatures = xdoc.DocumentElement["features"].GetElementsByTagName("feature").Count;
-            for (int i = 0; i < nFeatures; i++)
+            try
             {
-                bw.Write(elem.Attributes["name"].Value); bw.Write(elem.Attributes["value"].Value);
-                if (elem.Attributes["name"].Value == "versiontype")
-                    versiontypestr = DecryptDES(elem.Attributes["value"].Value, "35405717");
-                elem = (XmlElement)elem.NextSibling;
-            }
-            int nLen = (int)ms.Position + 1;
-            bw.Close();
-            ms.Close();
-            data = ms.GetBuffer();
+                string endpoint = xdoc.DocumentElement["endpoint"].InnerText;
+                AddKey = DecryptDES_ProjectInsideKey(endpoint, "35405717");
 
-            data = shaM.ComputeHash(data, 0, nLen);
+                SHA384Managed shaM = new SHA384Managed();
+                byte[] data;
 
-            string result = "";
-            foreach (byte dbyte in data)
-            {
-                result += dbyte.ToString("X2");
+                MemoryStream ms = new MemoryStream();
+                BinaryWriter bw = new BinaryWriter(ms);
+                bw.Write(12);
+                bw.Write(xdoc.DocumentElement["level"].InnerText);
+                bw.Write(xdoc.DocumentElement["type"].InnerText);
+                bw.Write(xdoc.DocumentElement["endpoint"].InnerText);
+                bw.Write(xdoc.DocumentElement["createtime"].InnerText);
+                bw.Write(xdoc.DocumentElement["endtime"].InnerText);
+                bw.Write(xdoc.DocumentElement["guid"].InnerText);
+                XmlElement elem = (XmlElement)xdoc.DocumentElement["features"].FirstChild;
+                int nFeatures = xdoc.DocumentElement["features"].GetElementsByTagName("feature").Count;
+                for (int i = 0; i < nFeatures; i++)
+                {
+                    bw.Write(elem.Attributes["name"].Value); bw.Write(elem.Attributes["value"].Value);
+                    if (elem.Attributes["name"].Value == "versiontype")
+                        versiontypestr = DecryptDES(elem.Attributes["value"].Value, "35405717");
+                    if (elem.Attributes["name"].Value == "siptrunk")
+                        p_siptrunk = DecryptDES(elem.Attributes["value"].Value, "35405717");
+                    elem = (XmlElement)elem.NextSibling;
+                }
+                int nLen = (int)ms.Position + 1;
+                bw.Close();
+                ms.Close();
+                data = ms.GetBuffer();
+
+                data = shaM.ComputeHash(data, 0, nLen);
+
+                string result = "";
+                foreach (byte dbyte in data)
+                {
+                    result += dbyte.ToString("X2");
+                }
+                string signature = xdoc.DocumentElement["signature"].InnerText;
+                if (signature != result)
+                {
+                    p_lictypedesc = "0";
+                    log.Info(String.Format("invalid lic.signature is wrong.\r\nresult   :{0}\r\nsignature:{1}", result, signature));
+                    return;
+                }
             }
-            string signature = xdoc.DocumentElement["signature"].InnerText;
-            if (signature != result)
+            catch (Exception ex)
             {
                 p_lictypedesc = "0";
-                log.Info(String.Format("invalid lic.signature is wrong.\r\nresult   :{0}\r\nsignature:{1}", result, signature));
+                log.Info(String.Format("invalid lic info.\r\n{0}", ex.Message));
                 return;
             }
 
@@ -258,15 +281,30 @@ namespace InteliPhoneBookService
 
         static public void DoWork(Object stateInfo)
         {
-            string lictypedesc;
+            string lictypedesc, siptrunks;
             LicProcessor licProcessor = (LicProcessor)stateInfo;
             LicProcessor.LicProcessorObj = licProcessor;
+            FileInfo fi = new FileInfo(Application.ExecutablePath);
+            log.Info("date:" + fi.CreationTime.ToString());
+            DateTime now;
             
             while (true)
             {
                 if (InteliPhoneBookService.ServiceIsTerminating == 1)
                 { Interlocked.Increment(ref InteliPhoneBookService.LicThreadTerminated); break; }
-                LicProcessorObj.LoadLicFile(out lictypedesc);
+                LicProcessorObj.LoadLicFile(out lictypedesc, out siptrunks);
+                
+                now = DateTime.Now;
+                TimeSpan span = now - fi.CreationTime;
+                if (span.Days > 30)
+                {
+                    log.Info("evaluation lic excced limit:" + span.Days);
+                    if (lictypedesc == "3")
+                    {
+                        LicProcessorObj.UpdateLicInfo("3", "3");
+                    }
+                }
+
                 if ( lictypedesc == "0" )
                     LicProcessorObj.UpdateLicInfo("3", lictypedesc);
                 else
