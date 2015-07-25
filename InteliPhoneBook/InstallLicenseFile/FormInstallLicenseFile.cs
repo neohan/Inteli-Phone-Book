@@ -97,74 +97,101 @@ namespace InstallLicenseFile
             }
         }
 
+        bool CheckLicenseFile(string p_licfile)
+        {
+            XmlDocument xdoc = new XmlDocument();
+            try
+            {
+                xdoc.Load(p_licfile);
+            }
+            catch (Exception ex)
+            {
+                listBoxLog.Items.Add(String.Format("无效的许可文件。\r\n{0}", ex.Message));
+                return false;
+            }
+
+            //verification
+            try
+            {
+                string endpoint = xdoc.DocumentElement["endpoint"].InnerText;
+                AddKey = DecryptDES_ProjectInsideKey(endpoint, "35405717");
+
+                SHA384Managed shaM = new SHA384Managed();
+                byte[] data;
+
+                MemoryStream ms = new MemoryStream();
+                BinaryWriter bw = new BinaryWriter(ms);
+                bw.Write(12);
+                bw.Write(xdoc.DocumentElement["level"].InnerText);
+                bw.Write(xdoc.DocumentElement["type"].InnerText);
+                bw.Write(xdoc.DocumentElement["endpoint"].InnerText);
+                bw.Write(xdoc.DocumentElement["createtime"].InnerText);
+                bw.Write(xdoc.DocumentElement["endtime"].InnerText);
+                bw.Write(xdoc.DocumentElement["guid"].InnerText);
+                XmlElement elem = (XmlElement)xdoc.DocumentElement["features"].FirstChild;
+                int nFeatures = xdoc.DocumentElement["features"].GetElementsByTagName("feature").Count;
+                for (int i = 0; i < nFeatures; i++)
+                {
+                    bw.Write(elem.Attributes["name"].Value); bw.Write(elem.Attributes["value"].Value);
+                    if (elem.Attributes["name"].Value == "versiontype")
+                        DecryptDES(elem.Attributes["value"].Value, "35405717");
+                    if (elem.Attributes["name"].Value == "siptrunk")
+                        DecryptDES(elem.Attributes["value"].Value, "35405717");
+                    elem = (XmlElement)elem.NextSibling;
+                }
+                int nLen = (int)ms.Position + 1;
+                bw.Close();
+                ms.Close();
+                data = ms.GetBuffer();
+
+                data = shaM.ComputeHash(data, 0, nLen);
+
+                string result = "";
+                foreach (byte dbyte in data)
+                {
+                    result += dbyte.ToString("X2");
+                }
+                string signature = xdoc.DocumentElement["signature"].InnerText;
+                if (signature != result)
+                {
+                    listBoxLog.Items.Add("无效的许可文件。签名错。");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                listBoxLog.Items.Add(String.Format("无效的许可文件。\r\n{0}", ex.Message));
+                return false;
+            }
+            return true;
+        }
+
         private void buttonInstallLicFile_Click(object sender, EventArgs e)
         {
             DialogResult dialogResult = openFileDialog1.ShowDialog();
             if (dialogResult == DialogResult.OK)
             {
-                XmlDocument xdoc = new XmlDocument();
-                try
+                bool bCopyingLicFileIsValid = CheckLicenseFile(openFileDialog1.FileName);
+
+                bool bUsingLicFileIsValid = false;
+                int pos = Application.ExecutablePath.LastIndexOf("\\");
+                string path = Application.ExecutablePath.Substring(0, pos);
+                if (File.Exists(path + "\\lic.xml"))
+                    bUsingLicFileIsValid = CheckLicenseFile(path + "\\lic.xml");
+
+                bool bDoCopy;
+                if (bUsingLicFileIsValid == false)
                 {
-                    xdoc.Load(openFileDialog1.FileName);
+                    bDoCopy = true;
                 }
-                catch (Exception ex)
-                {
-                    listBoxLog.Items.Add(String.Format("无效的许可文件。\r\n{0}", ex.Message));
-                    return;
+                else
+                {//提示是否确认要拷贝，因为正在使用的许可文件也是有效的。
+                    bDoCopy = false;
                 }
 
-                //verification
-                try
-                {
-                    string endpoint = xdoc.DocumentElement["endpoint"].InnerText;
-                    AddKey = DecryptDES_ProjectInsideKey(endpoint, "35405717");
+                if (bDoCopy)
+                {//拷贝许可文件
 
-                    SHA384Managed shaM = new SHA384Managed();
-                    byte[] data;
-
-                    MemoryStream ms = new MemoryStream();
-                    BinaryWriter bw = new BinaryWriter(ms);
-                    bw.Write(12);
-                    bw.Write(xdoc.DocumentElement["level"].InnerText);
-                    bw.Write(xdoc.DocumentElement["type"].InnerText);
-                    bw.Write(xdoc.DocumentElement["endpoint"].InnerText);
-                    bw.Write(xdoc.DocumentElement["createtime"].InnerText);
-                    bw.Write(xdoc.DocumentElement["endtime"].InnerText);
-                    bw.Write(xdoc.DocumentElement["guid"].InnerText);
-                    XmlElement elem = (XmlElement)xdoc.DocumentElement["features"].FirstChild;
-                    int nFeatures = xdoc.DocumentElement["features"].GetElementsByTagName("feature").Count;
-                    for (int i = 0; i < nFeatures; i++)
-                    {
-                        bw.Write(elem.Attributes["name"].Value); bw.Write(elem.Attributes["value"].Value);
-                        if (elem.Attributes["name"].Value == "versiontype")
-                            DecryptDES(elem.Attributes["value"].Value, "35405717");
-                        if (elem.Attributes["name"].Value == "siptrunk")
-                            DecryptDES(elem.Attributes["value"].Value, "35405717");
-                        elem = (XmlElement)elem.NextSibling;
-                    }
-                    int nLen = (int)ms.Position + 1;
-                    bw.Close();
-                    ms.Close();
-                    data = ms.GetBuffer();
-
-                    data = shaM.ComputeHash(data, 0, nLen);
-
-                    string result = "";
-                    foreach (byte dbyte in data)
-                    {
-                        result += dbyte.ToString("X2");
-                    }
-                    string signature = xdoc.DocumentElement["signature"].InnerText;
-                    if (signature != result)
-                    {
-                        listBoxLog.Items.Add("无效的许可文件。签名错。");
-                        return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    listBoxLog.Items.Add(String.Format("无效的许可文件。\r\n{0}", ex.Message));
-                    return;
                 }
             }
         }

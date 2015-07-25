@@ -9,6 +9,8 @@ using System.Xml;
 using System.IO;
 using System.Security.Cryptography;
 using System.Windows.Forms;
+using System.Management;
+using System.Net.NetworkInformation;
 
 namespace InteliPhoneBookService
 {
@@ -24,6 +26,85 @@ namespace InteliPhoneBookService
         private const string UPDATE_WHERES = " WHERE CfgKey = @keyname ";
         static public log4net.ILog log = log4net.LogManager.GetLogger("lic");
         static public LicProcessor LicProcessorObj = null;
+
+        private static string GetCpuId()
+        {
+            string strCpuid = "";
+            try
+            {
+                ManagementClass mcCpu = new ManagementClass("win32_Processor");
+                ManagementObjectCollection mocCpu = mcCpu.GetInstances();
+
+                foreach (ManagementObject m in mocCpu)
+                {
+                    strCpuid = m["ProcessorId"].ToString();
+                    if (strCpuid != null)
+                    {
+                        break;
+                    }
+                }
+
+                return strCpuid;
+            }
+            catch
+            {
+                return strCpuid;
+            }
+        }
+
+        private static string GetDiskId()
+        {
+            string diskId = "";
+
+            try
+            {
+                ManagementObjectSearcher wmiSearcher = new ManagementObjectSearcher();
+
+                wmiSearcher.Query = new SelectQuery("Win32_DiskDrive",
+                                                    "",
+                                                    new string[] { "PNPDeviceID" });
+                ManagementObjectCollection myCollection = wmiSearcher.Get();
+                ManagementObjectCollection.ManagementObjectEnumerator em =
+                myCollection.GetEnumerator();
+                em.MoveNext();
+                ManagementBaseObject mo = em.Current;
+                diskId = mo.Properties["PNPDeviceID"].Value.ToString().Trim();
+                return diskId;
+            }
+            catch
+            {
+                return diskId;
+            }
+        }
+
+        private static string GetMacId()
+        {
+            string macId = "";
+
+            try
+            {
+                if (NetworkInterface.GetIsNetworkAvailable())
+                {
+                    NetworkInterface[] ifaces = NetworkInterface.GetAllNetworkInterfaces();
+                    PhysicalAddress address = ifaces[0].GetPhysicalAddress();
+                    byte[] byteAddr = address.GetAddressBytes();
+                    for (int i = 0; i < byteAddr.Length; i++)
+                    {
+                        macId += byteAddr[i].ToString("X2");
+                        if (i != byteAddr.Length - 1)
+                        {
+                            macId += "-";
+                        }
+                    }
+                }
+                return macId;
+            }
+            catch
+            {
+                return macId;
+            }
+        }
+
 
         public bool UpdateLicInfo(string p_featuretype, string p_lictype)
         {
@@ -115,6 +196,7 @@ namespace InteliPhoneBookService
 
         void LoadLicFile(out string p_lictypedesc, out string p_siptrunk)
         {
+            string thisEndpointKey = EncryptDES_ProjectInsideKey(String.Format("{0}-{1}-{2}", GetCpuId(), GetDiskId(), GetMacId()), "35405717");
             p_lictypedesc = "0"; p_siptrunk = "1";
             string versiontypestr = "";
             XmlDocument xdoc = new XmlDocument();
@@ -135,6 +217,12 @@ namespace InteliPhoneBookService
             try
             {
                 string endpoint = xdoc.DocumentElement["endpoint"].InnerText;
+                if (endpoint != thisEndpointKey)
+                {
+                    p_lictypedesc = "0";
+                    log.Info(String.Format("invalid lic.machine info is wrong.\r\nresult   :{0}\r\nsignature:{1}", thisEndpointKey, endpoint));
+                    return;
+                }
                 AddKey = DecryptDES_ProjectInsideKey(endpoint, "35405717");
 
                 SHA384Managed shaM = new SHA384Managed();
@@ -244,6 +332,39 @@ namespace InteliPhoneBookService
             }
         }
 
+        private static string EncryptDES_ProjectInsideKey(string encryptString, string encryptKey)
+        {
+            try
+            {
+                if (encryptKey.Length < 8)
+                {
+                    encryptKey += ProjectInsideAddKey;
+                }
+
+                byte[] rgbKey = Encoding.UTF8.GetBytes(encryptKey.Substring(0, 8));
+
+                byte[] rgbIV = ProjectInsideKeys;
+
+                byte[] inputByteArray = Encoding.UTF8.GetBytes(encryptString);
+
+                DESCryptoServiceProvider dCSP = new DESCryptoServiceProvider();
+
+                MemoryStream mStream = new MemoryStream();
+
+                CryptoStream cStream = new CryptoStream(mStream, dCSP.CreateEncryptor(rgbKey, rgbIV), CryptoStreamMode.Write);
+
+                cStream.Write(inputByteArray, 0, inputByteArray.Length);
+
+                cStream.FlushFinalBlock();
+
+                return Convert.ToBase64String(mStream.ToArray());
+
+            }
+            catch
+            {
+                return encryptString;
+            }
+        }
 
         string DecryptDES(string decryptString, string decryptKey)
         {
