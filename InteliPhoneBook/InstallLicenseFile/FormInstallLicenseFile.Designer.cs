@@ -46,9 +46,11 @@
             // listBoxLog
             // 
             this.listBoxLog.FormattingEnabled = true;
+            this.listBoxLog.HorizontalScrollbar = true;
             this.listBoxLog.ItemHeight = 12;
             this.listBoxLog.Location = new System.Drawing.Point(12, 34);
             this.listBoxLog.Name = "listBoxLog";
+            this.listBoxLog.ScrollAlwaysVisible = true;
             this.listBoxLog.Size = new System.Drawing.Size(530, 220);
             this.listBoxLog.TabIndex = 1;
             // 

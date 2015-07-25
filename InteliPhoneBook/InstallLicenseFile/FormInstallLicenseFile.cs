@@ -231,7 +231,7 @@ namespace InstallLicenseFile
                 string endpoint = xdoc.DocumentElement["endpoint"].InnerText;
                 if (endpoint != thisEndpointKey)
                 {
-                    listBoxLog.Items.Add(String.Format("无效的许可文件。机器信息不符。\r\ncopying:{0}\r\nusing  :{1}", thisEndpointKey, endpoint));
+                    listBoxLog.Items.Add("无效的许可文件。机器信息不符。");
                     return false;
                 }
                 AddKey = DecryptDES_ProjectInsideKey(endpoint, "35405717");
@@ -294,6 +294,8 @@ namespace InstallLicenseFile
                 bool bCopyingLicFileIsValid = CheckLicenseFile(openFileDialog1.FileName);
                 if (bCopyingLicFileIsValid == false)
                 {//提示许可文件无效
+                    MessageBox.Show("待安装的许可文件无效！", "错误", MessageBoxButtons.OK);
+                    return;
                 }
 
                 bool bUsingLicFileIsValid = false;
@@ -309,12 +311,28 @@ namespace InstallLicenseFile
                 }
                 else
                 {//提示是否确认要拷贝，因为正在使用的许可文件也是有效的。
-                    bDoCopy = false;
+                    DialogResult yesnoDialogResult = MessageBox.Show("确认替换已有的许可！", "提示", MessageBoxButtons.YesNo);
+                    if( yesnoDialogResult == DialogResult.Yes )
+                        bDoCopy = true;
+                    else
+                        bDoCopy = false;
                 }
 
                 if (bDoCopy)
                 {//拷贝许可文件
-
+                    try
+                    {
+                        File.Copy(openFileDialog1.FileName, path + "\\lic.xml");
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        listBoxLog.Items.Add("无法安装许可文件，请以管理员权限运行此程序。");
+                    }
+                    catch (Exception otherex)
+                    {
+                        listBoxLog.Items.Add("无法安装许可文件，请稍后再试，如反复出现请联系管理员！");
+                        listBoxLog.Items.Add(otherex.Message);
+                    }
                 }
             }
         }
