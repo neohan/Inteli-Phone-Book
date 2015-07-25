@@ -9,6 +9,8 @@ using System.Windows.Forms;
 using System.IO;
 using System.Xml;
 using System.Security.Cryptography;
+using System.Management;
+using System.Net.NetworkInformation;
 
 /*
  * 不只是将许可文件安装到指定目录，在拷贝前还必须检查许可是否合法，等于将核心程序使用检查许可的方法再拷贝一份到这个许可安装程序内。
@@ -27,6 +29,118 @@ namespace InstallLicenseFile
         public FormInstallLicenseFile()
         {
             InitializeComponent();
+        }
+
+        private static string GetCpuId()
+        {
+            string strCpuid = "";
+            try
+            {
+                ManagementClass mcCpu = new ManagementClass("win32_Processor");
+                ManagementObjectCollection mocCpu = mcCpu.GetInstances();
+
+                foreach (ManagementObject m in mocCpu)
+                {
+                    strCpuid = m["ProcessorId"].ToString();
+                    if (strCpuid != null)
+                    {
+                        break;
+                    }
+                }
+
+                return strCpuid;
+            }
+            catch
+            {
+                return strCpuid;
+            }
+        }
+
+        private static string GetDiskId()
+        {
+            string diskId = "";
+
+            try
+            {
+                ManagementObjectSearcher wmiSearcher = new ManagementObjectSearcher();
+
+                wmiSearcher.Query = new SelectQuery("Win32_DiskDrive",
+                                                    "",
+                                                    new string[] { "PNPDeviceID" });
+                ManagementObjectCollection myCollection = wmiSearcher.Get();
+                ManagementObjectCollection.ManagementObjectEnumerator em =
+                myCollection.GetEnumerator();
+                em.MoveNext();
+                ManagementBaseObject mo = em.Current;
+                diskId = mo.Properties["PNPDeviceID"].Value.ToString().Trim();
+                return diskId;
+            }
+            catch
+            {
+                return diskId;
+            }
+        }
+
+        private static string GetMacId()
+        {
+            string macId = "";
+
+            try
+            {
+                if (NetworkInterface.GetIsNetworkAvailable())
+                {
+                    NetworkInterface[] ifaces = NetworkInterface.GetAllNetworkInterfaces();
+                    PhysicalAddress address = ifaces[0].GetPhysicalAddress();
+                    byte[] byteAddr = address.GetAddressBytes();
+                    for (int i = 0; i < byteAddr.Length; i++)
+                    {
+                        macId += byteAddr[i].ToString("X2");
+                        if (i != byteAddr.Length - 1)
+                        {
+                            macId += "-";
+                        }
+                    }
+                }
+                return macId;
+            }
+            catch
+            {
+                return macId;
+            }
+        }
+
+        private string EncryptDES_ProjectInsideKey(string encryptString, string encryptKey)
+        {
+            try
+            {
+                if (encryptKey.Length < 8)
+                {
+                    encryptKey += ProjectInsideAddKey;
+                }
+
+                byte[] rgbKey = Encoding.UTF8.GetBytes(encryptKey.Substring(0, 8));
+
+                byte[] rgbIV = ProjectInsideKeys;
+
+                byte[] inputByteArray = Encoding.UTF8.GetBytes(encryptString);
+
+                DESCryptoServiceProvider dCSP = new DESCryptoServiceProvider();
+
+                MemoryStream mStream = new MemoryStream();
+
+                CryptoStream cStream = new CryptoStream(mStream, dCSP.CreateEncryptor(rgbKey, rgbIV), CryptoStreamMode.Write);
+
+                cStream.Write(inputByteArray, 0, inputByteArray.Length);
+
+                cStream.FlushFinalBlock();
+
+                return Convert.ToBase64String(mStream.ToArray());
+
+            }
+            catch
+            {
+                return encryptString;
+            }
         }
 
         string DecryptDES_ProjectInsideKey(string decryptString, string decryptKey)
@@ -99,6 +213,7 @@ namespace InstallLicenseFile
 
         bool CheckLicenseFile(string p_licfile)
         {
+            string thisEndpointKey = EncryptDES_ProjectInsideKey(String.Format("{0}-{1}-{2}", GetCpuId(), GetDiskId(), GetMacId()), "35405717");
             XmlDocument xdoc = new XmlDocument();
             try
             {
@@ -114,6 +229,11 @@ namespace InstallLicenseFile
             try
             {
                 string endpoint = xdoc.DocumentElement["endpoint"].InnerText;
+                if (endpoint != thisEndpointKey)
+                {
+                    listBoxLog.Items.Add(String.Format("无效的许可文件。机器信息不符。\r\ncopying:{0}\r\nusing  :{1}", thisEndpointKey, endpoint));
+                    return false;
+                }
                 AddKey = DecryptDES_ProjectInsideKey(endpoint, "35405717");
 
                 SHA384Managed shaM = new SHA384Managed();
@@ -172,6 +292,9 @@ namespace InstallLicenseFile
             if (dialogResult == DialogResult.OK)
             {
                 bool bCopyingLicFileIsValid = CheckLicenseFile(openFileDialog1.FileName);
+                if (bCopyingLicFileIsValid == false)
+                {//提示许可文件无效
+                }
 
                 bool bUsingLicFileIsValid = false;
                 int pos = Application.ExecutablePath.LastIndexOf("\\");

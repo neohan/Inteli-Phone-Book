@@ -105,7 +105,6 @@ namespace InteliPhoneBookService
             }
         }
 
-
         public bool UpdateLicInfo(string p_featuretype, string p_lictype)
         {
             int result;
@@ -332,7 +331,7 @@ namespace InteliPhoneBookService
             }
         }
 
-        private static string EncryptDES_ProjectInsideKey(string encryptString, string encryptKey)
+        private string EncryptDES_ProjectInsideKey(string encryptString, string encryptKey)
         {
             try
             {
