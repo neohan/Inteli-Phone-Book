@@ -322,7 +322,9 @@ namespace InstallLicenseFile
                 {//拷贝许可文件
                     try
                     {
-                        File.Copy(openFileDialog1.FileName, path + "\\lic.xml");
+                        File.Copy(openFileDialog1.FileName, path + "\\lic.xml", true);
+                        listBoxLog.Items.Add("安装许可文件成功！");
+                        MessageBox.Show("安装许可文件成功！", "提示", MessageBoxButtons.OK);
                     }
                     catch (UnauthorizedAccessException ex)
                     {
