@@ -250,13 +250,14 @@ namespace InstallLicenseFile
                 bw.Write(xdoc.DocumentElement["guid"].InnerText);
                 XmlElement elem = (XmlElement)xdoc.DocumentElement["features"].FirstChild;
                 int nFeatures = xdoc.DocumentElement["features"].GetElementsByTagName("feature").Count;
+                string versionType = "", sipTrunks = "";
                 for (int i = 0; i < nFeatures; i++)
                 {
                     bw.Write(elem.Attributes["name"].Value); bw.Write(elem.Attributes["value"].Value);
                     if (elem.Attributes["name"].Value == "versiontype")
-                        DecryptDES(elem.Attributes["value"].Value, "35405717");
+                        versionType = DecryptDES(elem.Attributes["value"].Value, "35405717");
                     if (elem.Attributes["name"].Value == "siptrunk")
-                        DecryptDES(elem.Attributes["value"].Value, "35405717");
+                        sipTrunks = DecryptDES(elem.Attributes["value"].Value, "35405717");
                     elem = (XmlElement)elem.NextSibling;
                 }
                 int nLen = (int)ms.Position + 1;
@@ -277,6 +278,18 @@ namespace InstallLicenseFile
                     listBoxLog.Items.Add("无效的许可文件。签名错。");
                     return false;
                 }
+                if ( versionType == "basic" )
+                    listBoxLog.Items.Add("基本版");
+                else if ( versionType == "enforce" )
+                    listBoxLog.Items.Add("加强版。");
+                else if (versionType == "custom")
+                    listBoxLog.Items.Add("定制版。");
+                else
+                {
+                    listBoxLog.Items.Add("无效的许可文件。版本类型错。");
+                    return false;
+                }
+                listBoxLog.Items.Add(String.Format("中继数:{0}", sipTrunks));
             }
             catch (Exception ex)
             {
@@ -291,6 +304,7 @@ namespace InstallLicenseFile
             DialogResult dialogResult = openFileDialog1.ShowDialog();
             if (dialogResult == DialogResult.OK)
             {
+                listBoxLog.Items.Add("检查待安装的许可文件...");
                 bool bCopyingLicFileIsValid = CheckLicenseFile(openFileDialog1.FileName);
                 if (bCopyingLicFileIsValid == false)
                 {//提示许可文件无效
@@ -302,7 +316,10 @@ namespace InstallLicenseFile
                 int pos = Application.ExecutablePath.LastIndexOf("\\");
                 string path = Application.ExecutablePath.Substring(0, pos);
                 if (File.Exists(path + "\\lic.xml"))
+                {
+                    listBoxLog.Items.Add("检查已存在的许可文件...");
                     bUsingLicFileIsValid = CheckLicenseFile(path + "\\lic.xml");
+                }
 
                 bool bDoCopy;
                 if (bUsingLicFileIsValid == false)
