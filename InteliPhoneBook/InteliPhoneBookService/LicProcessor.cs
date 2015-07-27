@@ -418,10 +418,12 @@ namespace InteliPhoneBookService
                 TimeSpan span = now - fi.CreationTime;
                 if (span.Days > 30)
                 {
-                    log.Info("evaluation lic excced limit:" + span.Days);
                     if (lictypedesc == "3")
                     {
+                        log.Info("evaluation lic excced limit:" + span.Days);
                         LicProcessorObj.UpdateLicInfo("3", "3");
+                        continue;
+                        Thread.Sleep(60000);
                     }
                 }
 
