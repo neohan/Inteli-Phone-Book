@@ -105,7 +105,7 @@ namespace InteliPhoneBookService
             }
         }
 
-        public bool UpdateLicInfo(string p_featuretype, string p_lictype)
+        public bool UpdateLicInfo(string p_featuretype, string p_lictype, string p_siptrunks)
         {
             int result;
             bool bFound = false;
@@ -160,6 +160,31 @@ namespace InteliPhoneBookService
                 catch (Exception e) { log.Info(String.Format("Error occurs during execute sql:{0}.\r\n{1}\r\n", strSQL.ToString(), e.Message)); }
             }
 
+            bFound = false; strSQL.Clear();
+            strSQL.Append("SELECT CfgValue FROM SystemConfig WHERE CfgKey = \'LICENSE_SIPTRUNKS\' ");
+            try
+            {
+                using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
+                { while (rdr.Read()) { bFound = true; } }
+            }
+            catch (Exception e) { log.Info(String.Format("Error occurs during execute sql:{0}.\r\n{1}\r\n", strSQL.ToString(), e.Message)); }
+
+            if (bFound == false)
+            {
+                try
+                {
+                    strSQL.Clear();
+                    strSQL.Append("INSERT INTO ").Append(INSERT_TABLE).Append(INSERT_PARAMS);
+
+                    SqlParameter[] parms = new SqlParameter[] {
+                        new SqlParameter("@cfgkey", "LICENSE_SIPTRUNKS"),
+                        new SqlParameter("@cfgvalue", "1"),
+                        new SqlParameter("@displayname", "中继数")};
+                    SqlHelper.ExecuteNonQuery(strSQL.ToString(), out result, parms);
+                }
+                catch (Exception e) { log.Info(String.Format("Error occurs during execute sql:{0}.\r\n{1}\r\n", strSQL.ToString(), e.Message)); }
+            }
+
             try
             {
                 strSQL.Clear();
@@ -183,6 +208,21 @@ namespace InteliPhoneBookService
                 SqlParameter[] parms = new SqlParameter[] {
                     new SqlParameter("@cfgvalue", p_lictype),
                     new SqlParameter("@keyname", "FS_ESL_NBMODE_CONSECONDS") };
+
+                SqlHelper.ExecuteNonQuery(strSQL.ToString(), out result, parms);
+            }
+            catch (Exception e)
+            {
+                log.Info(String.Format("Error occurs during execute sql:{0}.\r\n{1}\r\n", strSQL.ToString(), e.Message));
+            }
+            try
+            {
+                strSQL.Clear();
+                strSQL.Append("UPDATE SystemConfig SET CfgValue = @cfgvalue ").Append(UPDATE_WHERES);
+
+                SqlParameter[] parms = new SqlParameter[] {
+                    new SqlParameter("@cfgvalue", p_siptrunks),
+                    new SqlParameter("@keyname", "LICENSE_SIPTRUNKS") };
 
                 SqlHelper.ExecuteNonQuery(strSQL.ToString(), out result, parms);
             }
@@ -299,7 +339,6 @@ namespace InteliPhoneBookService
 
         string DecryptDES_ProjectInsideKey(string decryptString, string decryptKey)
         {
-
             try
             {
                 if (decryptKey.Length < 8)
@@ -413,24 +452,23 @@ namespace InteliPhoneBookService
                 if (InteliPhoneBookService.ServiceIsTerminating == 1)
                 { Interlocked.Increment(ref InteliPhoneBookService.LicThreadTerminated); break; }
                 LicProcessorObj.LoadLicFile(out lictypedesc, out siptrunks);
-                
-                now = DateTime.Now;
-                TimeSpan span = now - fi.CreationTime;
-                if (span.Days > 30)
+
+
+
+                if (lictypedesc == "0" || lictypedesc == "3")
                 {
-                    if (lictypedesc == "3")
+                    now = DateTime.Now;
+                    TimeSpan span = now - fi.CreationTime;
+                    if (span.Days > 30)
                     {
                         log.Info("evaluation lic excced limit:" + span.Days);
-                        LicProcessorObj.UpdateLicInfo("3", "3");
-                        continue;
-                        Thread.Sleep(60000);
+                        LicProcessorObj.UpdateLicInfo("3", "3", siptrunks);
                     }
+                    else
+                        LicProcessorObj.UpdateLicInfo("4", "3", siptrunks);
                 }
-
-                if ( lictypedesc == "0" )
-                    LicProcessorObj.UpdateLicInfo("3", lictypedesc);
                 else
-                    LicProcessorObj.UpdateLicInfo("4", lictypedesc);
+                    LicProcessorObj.UpdateLicInfo("4", lictypedesc, siptrunks);
                 Thread.Sleep(60000);
             }
             log.Info("exited\r\n");
