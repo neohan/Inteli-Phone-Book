@@ -176,11 +176,20 @@ namespace InteliPhoneBookService
                     if (EventName == "BACKGROUND_JOB")
                     {
                         string eventBody = eslEvent.GetBody();
+                        if (eventBody.Contains("-OK"))
+                        {
+                            if (StateStr == "NONE" || StateStr == "INIT" || StateStr == "START" || StateStr == "ANIRINGING" || StateStr == "ANIANS" )
+                            {
+                                StateStr = "ANIERR"; clickToDial.CurrentStatus = "ANIERR";
+                                log.Info(String.Format("task:{0} finished.  State going to {1}.\r\n", clickToDial.TaskID, StateStr));
+                                break;
+                            }
+                        }
                         if (eventBody.Contains("-ERR"))
                         {
-                            if (StateStr == "NONE" || StateStr == "INIT" || StateStr == "START" || StateStr == "ANIRINGING")
+                            if (StateStr == "NONE" || StateStr == "INIT" || StateStr == "START" || StateStr == "ANIRINGING" || StateStr == "ANIANS")
                             {
-                                if (eventBody.Contains(" USER_BUSY"))
+                                if (eventBody.Contains(" USER_BUSY") || eventBody.Contains(" NORMAL_CLEARING"))
                                 {
                                     StateStr = "ANIBUSY"; clickToDial.CurrentStatus = "ANIBUSY";
                                 }

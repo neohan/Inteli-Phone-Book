@@ -221,7 +221,8 @@ namespace InteliPhoneBookService
                 strSQL.Append("UPDATE SystemConfig SET CfgValue = @cfgvalue ").Append(UPDATE_WHERES);
 
                 SqlParameter[] parms = new SqlParameter[] {
-                    new SqlParameter("@cfgvalue", p_siptrunks),
+                    //new SqlParameter("@cfgvalue", p_siptrunks),
+                    new SqlParameter("@cfgvalue", "10"),//测试阶段使用此行代码
                     new SqlParameter("@keyname", "LICENSE_SIPTRUNKS") };
 
                 SqlHelper.ExecuteNonQuery(strSQL.ToString(), out result, parms);
