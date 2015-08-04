@@ -156,7 +156,8 @@ namespace InteliPhoneBookService
                 clickToDial.Uuid = originateUuid;
                 DateTime clickdial_time = DateTime.Now;
                 bool bRedial = false;
-                eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
+                //eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
+                eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &bridge(sofia/external/" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
                 while (eslConnection.Connected() == ESL_SUCCESS)
                 {
                     if (InteliPhoneBookService.ServiceIsTerminating == 1) break;
@@ -294,6 +295,7 @@ namespace InteliPhoneBookService
                     {
                         if (EventName == "CHANNEL_CALLSTATE" && ChannelCallUUID == originateUuid && AnswerState == "ringing" && ChannelName.Contains(PrefixStr + Dnis + "@") == true)
                         {
+                            //eslConnection.Bgapi("uuid_simplify", originateUuid, string.Empty);
                             StateStr = "DNISRINGING"; clickToDial.CurrentStatus = "DNISRINGING";
                             log.Info(String.Format("task:{0}  State going to DNISRINGING.\r\n", clickToDial.TaskID));
                         }
