@@ -45,6 +45,7 @@ namespace InteliPhoneBookService
         static public readonly int ESL_SUCCESS = 1;
         static public log4net.ILog log = log4net.LogManager.GetLogger("eslob");
         public static ManualResetEvent clientConnected = new ManualResetEvent(false);
+        public static System.Net.IPAddress[] addressList;
         public enum CallAssistFlowState { 空闲=1, 无短信播放语音, 播放开始语音, 播放选择通知号码语音, 播放输入其他号码语音, 播放再见语音 }
         private const string INSERT_TABLE = " CallLog ";
         private const string INSERT_PARAMS = " (UserID,Ani,Dnis,StartDateTime,EndDateTime,SucFlag,CallType) values(@userid,@ani,@dnis,@startdatetime,@enddatetime,0,2)  ";
@@ -61,7 +62,9 @@ namespace InteliPhoneBookService
              * 从SystemConfig表内取？
              */
             bool bConnectDBSuc = false;
-            
+
+            IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
+            addressList = hostEntry.AddressList;
             //这里放查询数据库代码。
 
             if (bConnectDBSuc == false)
@@ -71,6 +74,16 @@ namespace InteliPhoneBookService
                 try { PlayWelcomeLimit = Int32.Parse(ConfigurationManager.AppSettings["PlayWelcomeLimit"]); }
                 catch (Exception e) { PlayWelcomeLimit = 3; } log.Info("Play Welcome Limit:" + PlayWelcomeLimit + "\r\n");
             }
+        }
+
+        public string ChangeLocalAddress(string p_ipaddress)
+        {
+            for (int i = 0; i < addressList.Length; i++)
+            {
+                if (p_ipaddress == addressList[i].ToString())
+                    return "127.0.0.1";
+            }
+            return p_ipaddress;
         }
 
         public bool CallIsValid(string p_fromip, string p_fsip, string p_sipno, out string voice_welcome_no, out string voice_welcome, out string voice_callbak, out string voice_input, out string voice_bye)
@@ -238,6 +251,7 @@ namespace InteliPhoneBookService
                             CallAssistFlowState callAssistFlowState = CallAssistFlowState.空闲;
                             bool bCanSendSMS = false, bCallbackNoIsCurrent = false, bCallIsValid = true; log.Info(eslEvent.Serialize(String.Empty) + "\r\n");
                             sip_req_user = eslEvent.GetHeader("Caller-Destination-Number", -1);
+                            sip_from_host = esobProcessor.ChangeLocalAddress(sip_from_host);
                             if (esobProcessor.CallIsValid(sip_from_host, fs_host, sip_req_user, out voice_welcome_no, out voice_welcome, out voice_callbak, out voice_input, out voice_bye) == false)
                             { eslConnection.Disconnect(); bCallIsValid = false; }
                             else
