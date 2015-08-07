@@ -64,7 +64,8 @@ namespace InteliPhoneBookService
                                 deleteClickToDial.ReturnStatus == "DNISNOANS" || deleteClickToDial.ReturnStatus == "DNISNORESP" ||
                                 deleteClickToDial.ReturnStatus == "DNISINVALID" || deleteClickToDial.ReturnStatus == "DNISTEMPFAIL" ||
                                 deleteClickToDial.ReturnStatus == "DNISFATAL" || deleteClickToDial.ReturnStatus == "COMPLETE" ||
-                                deleteClickToDial.ReturnStatus == "DNISERR" || deleteClickToDial.ReturnStatus == "EXCEEDLIMIT")
+                                deleteClickToDial.ReturnStatus == "DNISERR" || deleteClickToDial.ReturnStatus == "EXCEEDLIMIT" ||
+                                deleteClickToDial.ReturnStatus == "FINISH")
                             {
                                 bFound = true; log.Info(String.Format("Remove Task:{0}.\r\n", deleteClickToDial.TaskID));
                                 InteliPhoneBookService.ClickToDialMap.Remove(deleteClickToDial.TaskID); break;
@@ -74,18 +75,10 @@ namespace InteliPhoneBookService
                     }
                     foreach (InteliPhoneBook.Model.ClickToDial checkClickToDial in InteliPhoneBookService.ClickToDialMap.Values)
                     {//检查是否存在针对同一个分机的外拨请求，如果存在则不生成此次外拨请求。
-                        if (checkClickToDial.CurrentStatus != "ANIBUSY" && checkClickToDial.CurrentStatus != "ANINOANS" &&
-                            checkClickToDial.CurrentStatus != "ANIERR" && checkClickToDial.CurrentStatus != "DNISBUSY" &&
-                            checkClickToDial.CurrentStatus != "DNISNOANS" && checkClickToDial.CurrentStatus != "DNISNORESP" &&
-                            checkClickToDial.CurrentStatus != "DNISINVALID" && checkClickToDial.CurrentStatus != "DNISTEMPFAIL" &&
-                            checkClickToDial.CurrentStatus != "DNISFATAL" && checkClickToDial.CurrentStatus != "COMPLETE" &&
-                            checkClickToDial.CurrentStatus != "DNISERR" && checkClickToDial.CurrentStatus != "EXCEEDLIMIT")
+                        if (checkClickToDial.Ani == ani && checkClickToDial.SIPGatewayIP == sipgwip && checkClickToDial.SIPServerIP == sipserverip)
                         {
-                            if (checkClickToDial.Ani == ani && checkClickToDial.SIPGatewayIP == sipgwip && checkClickToDial.SIPServerIP == sipserverip)
-                            {
-                                log.Info(String.Format("The same ani exist(TaskID:{0}), cannot create ClickToDial obj.\r\n", checkClickToDial.TaskID));
-                                return "BUSY";
-                            }
+                            log.Info(String.Format("The same ani exist(TaskID:{0}), cannot create ClickToDial obj.\r\n", checkClickToDial.TaskID));
+                            return "BUSY";
                         }
                     }
 
@@ -135,6 +128,7 @@ namespace InteliPhoneBookService
 
             protected string OnQueryStatus(UriQuery query, string paramString)
             {
+                string status = "NOTFOUND";
                 lock (InteliPhoneBookService.ClickToDialMap)
                 {
                     bool bKeyExist = InteliPhoneBookService.ClickToDialMap.ContainsKey(paramString);
@@ -142,11 +136,25 @@ namespace InteliPhoneBookService
                     {
                         InteliPhoneBook.Model.ClickToDial clickToDial = null;
                         InteliPhoneBookService.ClickToDialMap.TryGetValue(paramString, out clickToDial);
-                        clickToDial.ReturnStatus = clickToDial.CurrentStatus;
-                        return clickToDial.CurrentStatus;
+                        if (clickToDial != null)
+                        {
+                            clickToDial.ReturnStatus = clickToDial.CurrentStatus;
+                            status = clickToDial.CurrentStatus;
+
+                            if (status == "ANIBUSY" || status == "ANINOANS" ||
+                                status == "ANIERR" || status == "DNISBUSY" ||
+                                status == "DNISNOANS" || status == "DNISNORESP" ||
+                                status == "DNISINVALID" || status == "DNISTEMPFAIL" ||
+                                status == "DNISFATAL" || status == "COMPLETE" ||
+                                status == "DNISERR" || status == "EXCEEDLIMIT" ||
+                                status == "FINISH")
+                            {
+                                log.Info(String.Format("Remove Task:{0}.\r\n", clickToDial.TaskID));
+                                InteliPhoneBookService.ClickToDialMap.Remove(clickToDial.TaskID);
+                            }
+                        }
                     }
-                    else
-                        return "NOTFOUND";
+                    return status;
                 }
             }
 

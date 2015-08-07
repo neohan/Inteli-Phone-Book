@@ -155,7 +155,7 @@ namespace InteliPhoneBookService
                 log.Info("create_uuid:" + originateUuid + "\r\n");
                 clickToDial.Uuid = originateUuid;
                 DateTime clickdial_time = DateTime.Now;
-                bool bRedial = false;
+                bool bRedial = false, bAniHangup = false, bDnisHangup = false;
                 //eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
                 eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &bridge(sofia/external/" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
                 while (eslConnection.Connected() == ESL_SUCCESS)
@@ -171,13 +171,24 @@ namespace InteliPhoneBookService
                     string ChannelCallUUID = eslEvent.GetHeader("Channel-Call-UUID", -1);
                     string OtherLegUniqueID = eslEvent.GetHeader("Other-Leg-Unique-ID", -1);
                     string HangupCause = eslEvent.GetHeader("Hangup-Cause", -1);
+                    string JobCommand = eslEvent.GetHeader("Job-Command", -1);
                     if ((EventName != "MESSAGE_WAITING")&&(EventName != "MESSAGE_QUERY"))
                         log.Info(eslEvent.Serialize(String.Empty) + "\r\n");
 
-                    if (EventName == "BACKGROUND_JOB")
+                    if (EventName == "BACKGROUND_JOB" && JobCommand == "uuid_simplify")
                     {
                         string eventBody = eslEvent.GetBody();
-                        if (eventBody.Contains("-OK"))
+                        if (eventBody.Contains("-ERR"))
+                        {
+                            StateStr = "FINISH"; clickToDial.CurrentStatus = "FINISH";
+                            log.Info(String.Format("task:{0} finished.  State going to FINISH, uuid_simplify error.\r\n", clickToDial.TaskID));
+                            break;
+                        }
+                    }
+                    if (EventName == "BACKGROUND_JOB" && JobCommand == "originate")
+                    {
+                        string eventBody = eslEvent.GetBody();
+                        /*if (eventBody.Contains("-OK"))
                         {
                             if (StateStr == "NONE" || StateStr == "INIT" || StateStr == "START" || StateStr == "ANIRINGING" || StateStr == "ANIANS" )
                             {
@@ -185,7 +196,7 @@ namespace InteliPhoneBookService
                                 log.Info(String.Format("task:{0} finished.  State going to {1}.\r\n", clickToDial.TaskID, StateStr));
                                 break;
                             }
-                        }
+                        }*/
                         if (eventBody.Contains("-ERR"))
                         {
                             if (StateStr == "NONE" || StateStr == "INIT" || StateStr == "START" || StateStr == "ANIRINGING" || StateStr == "ANIANS")
@@ -295,7 +306,7 @@ namespace InteliPhoneBookService
                     {
                         if (EventName == "CHANNEL_CALLSTATE" && ChannelCallUUID == originateUuid && AnswerState == "ringing" && ChannelName.Contains(PrefixStr + Dnis + "@") == true)
                         {
-                            //eslConnection.Bgapi("uuid_simplify", originateUuid, string.Empty);
+                            eslConnection.Bgapi("uuid_simplify", originateUuid, string.Empty);
                             StateStr = "DNISRINGING"; clickToDial.CurrentStatus = "DNISRINGING";
                             log.Info(String.Format("task:{0}  State going to DNISRINGING.\r\n", clickToDial.TaskID));
                         }
@@ -315,15 +326,15 @@ namespace InteliPhoneBookService
                         }
                         else if (EventName == "CHANNEL_CALLSTATE" && ChannelCallUUID == originateUuid && AnswerState == "hangup" && ChannelName.Contains(PrefixStr + Dnis + "@") == true
                             && HangupCause == "NORMAL_TEMPORARY_FAILURE")
-                        {
+                        {//设置了呼叫转移会出现这个情况
                             StateStr = "DNISTEMPFAIL"; clickToDial.CurrentStatus = "DNISTEMPFAIL";
                             log.Info(String.Format("task:{0} finished  State going to DNISTEMPFAIL.\r\n", clickToDial.TaskID));
                             break;
                         }
                         else if (EventName == "CHANNEL_CALLSTATE" && ChannelCallUUID == originateUuid && AnswerState == "hangup" && ChannelName.Contains(PrefixStr + Dnis + "@") == true)
                         {
-                            StateStr = "DNISFATAL" + HangupCause; clickToDial.CurrentStatus = "DNISFATAL" + HangupCause;
-                            log.Info(String.Format("task:{0} finished  State going to DNISFATAL{1}.\r\n", clickToDial.TaskID, HangupCause));
+                            StateStr = "DNISFATAL"; clickToDial.CurrentStatus = "DNISFATAL";
+                            log.Info(String.Format("task:{0} finished  State going to DNISFATAL {1}.\r\n", clickToDial.TaskID, HangupCause));
                             break;
                         }
                     }
@@ -335,6 +346,23 @@ namespace InteliPhoneBookService
                             log.Info(String.Format("task:{0}  State going to COMPLETE.\r\n", clickToDial.TaskID));
                             break;
                         }
+                    }
+
+                    if (bAniHangup == false && EventName == "CHANNEL_STATE" && ChannelCallUUID == originateUuid && ChannelState == "CS_HANGUP" && ChannelName.Contains(PrefixStr + Ani + "@") == true)
+                    {
+                        bAniHangup = true;
+                        log.Info(String.Format("task:{0}  Ani Hangup.\r\n", clickToDial.TaskID));
+                    }
+                    if (bDnisHangup== false && EventName == "CHANNEL_STATE" && ChannelCallUUID == originateUuid && ChannelState == "CS_HANGUP" && ChannelName.Contains(PrefixStr + Dnis + "@") == true)
+                    {
+                        bDnisHangup = true;
+                        log.Info(String.Format("task:{0}  Dnis Hangup.\r\n", clickToDial.TaskID));
+                    }
+                    if (bAniHangup == true && bDnisHangup == true)
+                    {
+                        StateStr = "FINISH"; clickToDial.CurrentStatus = "FINISH";
+                        log.Info(String.Format("task:{0}  State going to FINISH.\r\n", clickToDial.TaskID));
+                        break;
                     }
                 }
                 eslConnection.Disconnect();
