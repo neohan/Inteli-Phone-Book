@@ -319,22 +319,22 @@ namespace InteliPhoneBookService
             if (versiontypestr == "basic")//SJ966WcqFE8=
             {
                 p_lictypedesc = "4";
-                log.Info("basic lic mode");
+                log.Info("basic lic mode." + thisEndpointKey);
             }
             else if (versiontypestr == "enforce")//RH2ah1pD+oo=
             {
                 p_lictypedesc = "5";
-                log.Info("enforce lic mode");
+                log.Info("enforce lic mode." + thisEndpointKey);
             }
             else if (versiontypestr == "custom")//EpeEkWdlzb4=
             {
                 p_lictypedesc = "6";
-                log.Info("custom lic mode");
+                log.Info("custom lic mode." + thisEndpointKey);
             }
             else
             {
                 p_lictypedesc = "0";
-                log.Info("invalid lic." + versiontypestr);
+                log.Info("invalid lic." + versiontypestr + "." + thisEndpointKey);
             }
         }
 
