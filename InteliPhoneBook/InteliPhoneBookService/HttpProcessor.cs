@@ -59,13 +59,13 @@ namespace InteliPhoneBookService
                         bFound = false;
                         foreach (InteliPhoneBook.Model.ClickToDial deleteClickToDial in InteliPhoneBookService.ClickToDialMap.Values)
                         {
-                            if (deleteClickToDial.ReturnStatus == "ANIBUSY" || deleteClickToDial.ReturnStatus == "ANINOANS" ||
-                                deleteClickToDial.ReturnStatus == "ANIERR" || deleteClickToDial.ReturnStatus == "DNISBUSY" ||
-                                deleteClickToDial.ReturnStatus == "DNISNOANS" || deleteClickToDial.ReturnStatus == "DNISNORESP" ||
-                                deleteClickToDial.ReturnStatus == "DNISINVALID" || deleteClickToDial.ReturnStatus == "DNISTEMPFAIL" ||
-                                deleteClickToDial.ReturnStatus == "DNISFATAL" || deleteClickToDial.ReturnStatus == "COMPLETE" ||
-                                deleteClickToDial.ReturnStatus == "DNISERR" || deleteClickToDial.ReturnStatus == "EXCEEDLIMIT" ||
-                                deleteClickToDial.ReturnStatus == "FINISH")
+                            if (deleteClickToDial.CurrentStatus == "ANIBUSY" || deleteClickToDial.CurrentStatus == "ANINOANS" ||
+                                deleteClickToDial.CurrentStatus == "ANIERR" || deleteClickToDial.CurrentStatus == "DNISBUSY" ||
+                                deleteClickToDial.CurrentStatus == "DNISNOANS" || deleteClickToDial.CurrentStatus == "DNISNORESP" ||
+                                deleteClickToDial.CurrentStatus == "DNISINVALID" || deleteClickToDial.CurrentStatus == "DNISTEMPFAIL" ||
+                                deleteClickToDial.CurrentStatus == "DNISFATAL" || deleteClickToDial.CurrentStatus == "COMPLETE" ||
+                                deleteClickToDial.CurrentStatus == "DNISERR" || deleteClickToDial.CurrentStatus == "EXCEEDLIMIT" ||
+                                deleteClickToDial.CurrentStatus == "FINISH")
                             {
                                 bFound = true; log.Info(String.Format("Remove Task:{0}.\r\n", deleteClickToDial.TaskID));
                                 InteliPhoneBookService.ClickToDialMap.Remove(deleteClickToDial.TaskID); break;
