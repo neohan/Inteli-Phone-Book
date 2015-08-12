@@ -156,8 +156,7 @@ namespace InteliPhoneBookService
                 clickToDial.Uuid = originateUuid;
                 DateTime clickdial_time = DateTime.Now;
                 bool bRedial = false, bAniHangup = false, bDnisHangup = false;
-                //eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &bridge({api_on_ring='uuid_simplify " + originateUuid + "'}sofia/external/" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
-                eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &bridge(sofia/external/" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
+                eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",origination_uuid=" + originateUuid + ",origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &deflect(sip:" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
                 while (eslConnection.Connected() == ESL_SUCCESS)
                 {
                     if (InteliPhoneBookService.ServiceIsTerminating == 1) break;

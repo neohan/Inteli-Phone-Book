@@ -99,6 +99,10 @@
       <Project>{7DC0524D-8F91-4861-8102-D3870B0E1787}</Project>
       <Name>InteliPhoneBook.Model</Name>
     </ProjectReference>
+    <ProjectReference Include="..\InteliPhoneBook.Utility\InteliPhoneBook.Utility.csproj">
+      <Project>{F56C6D54-4466-41F8-9ADF-61D4F71624D8}</Project>
+      <Name>InteliPhoneBook.Utility</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
