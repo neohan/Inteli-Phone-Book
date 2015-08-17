@@ -60,8 +60,8 @@ namespace InteliPhoneBookService
                         foreach (InteliPhoneBook.Model.ClickToDial deleteClickToDial in InteliPhoneBookService.ClickToDialMap.Values)
                         {
                             if (deleteClickToDial.CurrentStatus == "ANIBUSY" || deleteClickToDial.CurrentStatus == "ANINOANS" ||
-                                deleteClickToDial.CurrentStatus == "ANIERR" || deleteClickToDial.CurrentStatus == "COMPLETE" ||
-                                deleteClickToDial.CurrentStatus == "EXCEEDLIMIT" || deleteClickToDial.CurrentStatus == "FINISH")
+                                deleteClickToDial.CurrentStatus == "ANIERR" || deleteClickToDial.CurrentStatus == "ANIINVALID" ||
+                                deleteClickToDial.CurrentStatus == "COMPLETE" || deleteClickToDial.CurrentStatus == "EXCEEDLIMIT" || deleteClickToDial.CurrentStatus == "FINISH")
                             {
                                 bFound = true; log.Info(String.Format("Remove Task:{0}.\r\n", deleteClickToDial.TaskID));
                                 InteliPhoneBookService.ClickToDialMap.Remove(deleteClickToDial.TaskID); break;
@@ -116,6 +116,7 @@ namespace InteliPhoneBookService
                     }
                     clickToDial.UserID = userid;
                     InteliPhoneBookService.ClickToDialMap.Add(taskId, clickToDial);
+                    log.Info(String.Format("TaskID:{0}, Ani:{1},  Dnis:{2}, GW:{3}, GWPort:{4}, SIPSvr:{5}, SIPPort:{6}.\r\n", clickToDial.TaskID, clickToDial.Ani, clickToDial.Dnis, clickToDial.SIPGatewayIP, clickToDial.SIPGatewayPort, clickToDial.SIPServerAddress, clickToDial.SIPServerAddressBackup));
                     //这个taskId返回给页面，后续调用其它查询请求，以此taskId为标识。
                     ThreadPool.QueueUserWorkItem(new WaitCallback(FSESIBProcessor.ClickToDialDoWork), clickToDial);
                 }
@@ -138,8 +139,8 @@ namespace InteliPhoneBookService
                             status = clickToDial.CurrentStatus;
 
                             if (status == "ANIBUSY" || status == "ANINOANS" ||
-                                status == "ANIERR" || status == "COMPLETE" ||
-                                status == "EXCEEDLIMIT" || status == "FINISH")
+                                status == "ANIERR" || status == "ANIINVALID" ||
+                                status == "COMPLETE" || status == "EXCEEDLIMIT" || status == "FINISH")
                             {
                                 log.Info(String.Format("Remove Task:{0}.\r\n", clickToDial.TaskID));
                                 InteliPhoneBookService.ClickToDialMap.Remove(clickToDial.TaskID);

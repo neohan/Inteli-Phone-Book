@@ -18,7 +18,7 @@ namespace InteliPhoneBookService
     class FSESIBProcessor
     {
         private const string INSERT_TABLE = " CallLog ";
-        private const string INSERT_PARAMS = " (UserID,Ani,Dnis,StartDateTime,SucFlag,CallType) values(@userid,@ani,@dnis,@startdatetime,@sucflag,1)  ";
+        private const string INSERT_PARAMS = " (UserID,Ani,Dnis,StartDateTime,EndDateTime,SucFlag,CallType) values(@userid,@ani,@dnis,@startdatetime,@enddatetime,@sucflag,1)  ";
         private const string UPDATE_WHERES = " WHERE ID = (SELECT SipRelay.ID FROM UserInfo, Branch, SipRelay WHERE UserInfo.id = @userid AND UserInfo.BranchId = Branch.ID AND Branch.RelayId = SipRelay.ID ) ";
         static public readonly int ESL_SUCCESS = 1;
         static public log4net.ILog log = log4net.LogManager.GetLogger("eslib");
@@ -67,7 +67,8 @@ namespace InteliPhoneBookService
                 new SqlParameter("@ani", p_ani),
                 new SqlParameter("@dnis", p_dnis),
                 new SqlParameter("@sucflag", p_dialsuc?1:0),
-                new SqlParameter("@startdatetime", p_time.ToString())};
+                new SqlParameter("@startdatetime", p_time.ToString()),
+                new SqlParameter("@enddatetime", p_time.ToString())};
 
                 SqlHelper.ExecuteNonQuery(strSQL.ToString(), out result, parms);
             }
@@ -172,6 +173,7 @@ namespace InteliPhoneBookService
                     string OtherLegUniqueID = eslEvent.GetHeader("Other-Leg-Unique-ID", -1);
                     string HangupCause = eslEvent.GetHeader("Hangup-Cause", -1);
                     string JobCommand = eslEvent.GetHeader("Job-Command", -1);
+                    string JobCommandArg = eslEvent.GetHeader("Job-Command-Arg", -1);
                     string EventSubclass = eslEvent.GetHeader("Event-Subclass", -1);
 
                     if ((EventName != "MESSAGE_WAITING") && (EventName != "MESSAGE_QUERY") && (EventName != "HEARTBEAT") && (EventName != "RE_SCHEDULE"))
@@ -189,7 +191,7 @@ namespace InteliPhoneBookService
                                 break;
                             }
                         }*/
-                        if (eventBody.Contains("-ERR") && (eventBody.Contains(" NORMAL_TEMPORARY_FAILURE") == false))
+                        if (eventBody.Contains("-ERR") && (eventBody.Contains(" NORMAL_TEMPORARY_FAILURE") == false) && JobCommandArg.Contains(originateUuid) == true)
                         {
                             PreStateStr = StateStr;
                             if (StateStr == "NONE" || StateStr == "INIT" || StateStr == "START" || StateStr == "ANIRINGING" || StateStr == "ANIANS")
