@@ -94,13 +94,39 @@ namespace InteliPhoneBookService
 
         static public void DoWork(Object stateInfo)
         {
+            int nTimes = 0;
             FSESIBProcessor esibProcessor = (FSESIBProcessor)stateInfo;
             FSESIBProcessor.FSESIBProcessorObj = esibProcessor;
             esibProcessor.Initialize();
             while (true)
             {
+                ++nTimes;
                 if (InteliPhoneBookService.ServiceIsTerminating == 1)
                 { Interlocked.Increment(ref InteliPhoneBookService.FSIBThreadTerminated); break; }
+
+                if ((nTimes % 60) == 0)
+                {
+                    StringBuilder strSQL = new StringBuilder();
+                    strSQL.Append("SELECT CfgValue FROM SystemConfig WHERE CfgKey = \'FS_ESL_IBMODE_ANIANSTIMEOUT\' ");
+                    try
+                    {
+                        using (SqlDataReader rdr = SqlHelper.ExecuteReader(SqlHelper.SqlconnString, CommandType.Text, strSQL.ToString(), null))
+                        {
+                            while (rdr.Read())
+                            {
+                                try { FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout = Int32.Parse(rdr["CfgValue"].ToString()); }
+                                catch (Exception e)
+                                {
+                                    FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout = 60;
+                                    log.Info(String.Format("Error occurs during Int32.Parse CfgValue:{0}.\r\n{1}\r\n", rdr["CfgValue"].ToString(), e.Message));
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    catch (Exception e) { log.Info(String.Format("Error occurs during execute sql:{0}.\r\n{1}\r\n", strSQL.ToString(), e.Message)); }
+                }
+
                 Thread.Sleep(1000);
             }
             log.Info("exited\r\n");
@@ -112,7 +138,7 @@ namespace InteliPhoneBookService
             log.Info(String.Format("task:{0} thread starting...\r\n", clickToDial.TaskID));
             int reconnectTimes = 0;
             string Ani = clickToDial.Ani, Dnis = clickToDial.Dnis;
-            string StateStr = "NONE", PreStateStr = "NONE", PrefixStr = "sofia/external/", dialedNo;
+            string StateStr = "NONE", PreStateStr = "NONE", PrefixStr = "sofia/external/";
             while (true)
             {//如果连不上fs也要求记录一下状态,利于诊断问题,这些信息同样也需要在界面上显示。
                 ESLconnection eslConnection = new ESLconnection(clickToDial.SIPGatewayIP, FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeServerPort, "ClueCon");
@@ -253,6 +279,8 @@ namespace InteliPhoneBookService
                             {
                                 if (bRedial == false && String.IsNullOrEmpty(clickToDial.SIPServerAddressBackup) == false)
                                 {
+                                    eslEvent = eslConnection.Api("uuid_kill", originateUuid);
+                                    log.Info(eslEvent.Serialize(String.Empty) + "\r\n");
                                     log.Info(String.Format("task:{0} redial.\r\n", clickToDial.TaskID));
                                     bRedial = true;
                                     StateStr = "NONE"; clickToDial.CurrentStatus = "NONE";
