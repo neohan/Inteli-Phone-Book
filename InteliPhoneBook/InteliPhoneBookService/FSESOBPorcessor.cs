@@ -65,6 +65,8 @@ namespace InteliPhoneBookService
 
             IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
             addressList = hostEntry.AddressList;
+            for (int i = 0; i < addressList.Length; i++)
+                log.Info(String.Format("address {0}:{1}\r\n", i, addressList[i].ToString()));
             //这里放查询数据库代码。
 
             if (bConnectDBSuc == false)
@@ -251,7 +253,7 @@ namespace InteliPhoneBookService
                             CallAssistFlowState callAssistFlowState = CallAssistFlowState.空闲;
                             bool bCanSendSMS = false, bCallbackNoIsCurrent = false, bCallIsValid = true; log.Info(eslEvent.Serialize(String.Empty) + "\r\n");
                             sip_req_user = eslEvent.GetHeader("Caller-Destination-Number", -1);
-                            sip_from_host = esobProcessor.ChangeLocalAddress(sip_from_host);
+                            fs_host = esobProcessor.ChangeLocalAddress(fs_host);
                             if (esobProcessor.CallIsValid(sip_from_host, fs_host, sip_req_user, out voice_welcome_no, out voice_welcome, out voice_callbak, out voice_input, out voice_bye) == false)
                             { eslConnection.Disconnect(); bCallIsValid = false; }
                             else
