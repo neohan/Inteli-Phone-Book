@@ -183,7 +183,7 @@ namespace InteliPhoneBookService
                 clickToDial.Uuid = originateUuid;
                 DateTime clickdial_time = DateTime.Now;
                 bool bRedial = false, bAniHangup = false;
-                eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",origination_uuid=" + originateUuid + ",origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &deflect(sip:" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
+                eslConnection.Bgapi("originate", "{ignore_early_media=true,originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",origination_uuid=" + originateUuid + ",origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddress + " &deflect(sip:" + Dnis + "@" + clickToDial.SIPServerAddress + ")", String.Empty);
                 while (eslConnection.Connected() == ESL_SUCCESS)
                 {
                     if (InteliPhoneBookService.ServiceIsTerminating == 1) break;
@@ -241,7 +241,7 @@ namespace InteliPhoneBookService
                                         log.Info(String.Format("task:{0} redial.\r\n", clickToDial.TaskID));
                                         bRedial = true;
                                         StateStr = "NONE"; clickToDial.CurrentStatus = "NONE";
-                                        eslConnection.Bgapi("originate", "{originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddressBackup + " &deflect(sip:" + Dnis + "@" + clickToDial.SIPServerAddressBackup + ")", String.Empty);
+                                        eslConnection.Bgapi("originate", "{ignore_early_media=true,originate_timeout=" + FSESIBProcessor.FSESIBProcessorObj.FSESLInboundModeAniAnsTimeout + ",api_on_answer='uuid_hold " + originateUuid + "',origination_uuid=" + originateUuid + ",ignore_early_media=true,origination_caller_id_number=" + Dnis + "}sofia/external/" + Ani + "@" + clickToDial.SIPServerAddressBackup + " &deflect(sip:" + Dnis + "@" + clickToDial.SIPServerAddressBackup + ")", String.Empty);
                                         continue;
                                     }
                                     else
@@ -313,13 +313,14 @@ namespace InteliPhoneBookService
                                 {
                                     StateStr = "ANIERR"; clickToDial.CurrentStatus = "ANIERR";
                                 }
+                                log.Info(String.Format("task:{0} finished.  State from {1} going to {2}.\r\n", clickToDial.TaskID, PreStateStr, StateStr));
+                                break;
                             }
-                            else
+                            /*主叫是个外线号码时,会落入这个条件*/
+                            else if ( HangupCause != "BLIND_TRANSFER")
                             {
                                 StateStr = "ANIERR"; clickToDial.CurrentStatus = "ANIERR";
                             }
-                            log.Info(String.Format("task:{0} finished.  State from {1} going to {2}.\r\n", clickToDial.TaskID, PreStateStr, StateStr));
-                            break;
                         }
                     }
                     if (StateStr == "NONE")
@@ -369,7 +370,8 @@ namespace InteliPhoneBookService
                         }
                     }
 
-                    if (bAniHangup == false && EventName == "CHANNEL_STATE" && ChannelCallUUID == originateUuid && ChannelState == "CS_HANGUP" && ChannelName.Contains(PrefixStr + Ani + "@") == true)
+                    if (bAniHangup == false && EventName == "CHANNEL_STATE" && ChannelCallUUID == originateUuid &&
+                        ChannelState == "CS_HANGUP" && ChannelName.Contains(PrefixStr + Ani + "@") == true && HangupCause != "BLIND_TRANSFER")
                     {
                         bAniHangup = true;
                         log.Info(String.Format("task:{0}  Ani Hangup.\r\n", clickToDial.TaskID));
